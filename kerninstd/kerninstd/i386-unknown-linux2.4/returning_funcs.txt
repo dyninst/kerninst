@@ -1,0 +1,16 @@
+// returning_funcs.txt
+// Kernel functions that return on behalf of callers.
+// Examples: .stret4 ("structure return 4 bytes")
+// The first entry of the 3-tuple is always blank in this file
+// (Just to keep the format the same as skips.txt; don't sweat the details)
+// Note that the last line has to end in a comma, but if you add a comment
+// after that comma, you can avoid a spurious cout warning being printed
+// to the screen: "unknown start of command"
+
+//   {"", "unix", ".stret4"},
+//   {"", "unix", ".stret8"},
+
+     {"", "kernel", "panic"}, // doesn't really return for the caller, but
+                              // we do want the basicblock to end at the call
+
+// hello world (comment at end of file to avoid spurious cout warning)

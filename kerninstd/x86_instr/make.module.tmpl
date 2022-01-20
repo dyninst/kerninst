@@ -1,0 +1,40 @@
+NO_IMPLICIT_TEMPLATES = true
+
+# In ../../make....program, this symbol is checked for definition,
+# not for its value
+#USES_LIB_KERNINST_UTIL = false
+
+TARGET	      = pia
+
+#SRCS	     += ../src/sparc_reg_set.C \
+#		../../immediates/src/uimm.C \
+#		../../immediates/src/simm.C \
+#		../../sparc_reg/src/sparc_reg.C \
+#		../../bitutils/src/bitUtils.C \
+#		../src/templates.C ../src/main.C
+
+SRCS         += ../../immediates/src/uimm.C \
+                ../../immediates/src/simm.C \
+		../../bitutils/src/bitUtils.C \
+		../../x86_reg/src/x86_reg.C \
+		../../x86_reg_set/src/x86_reg_set.C \
+		../src/x86_instr.C \
+		../src/x86_operand_code.C \
+		../src/x86_instr_desc.C \
+		../src/pia.C
+
+
+IFLAGS	     += -I../../immediates/src -I../../x86_reg/src -I../../bitutils/src \
+                -I../../x86_reg_set/src
+VPATH	     += ../src ../../immediates/src ../../x86_reg/src ../../bitutils/src \
+		../../x86_reg_set/src
+
+LIBS 	     += 
+SYSLIBS	     += 
+
+
+CFLAGS		+=
+CXXFLAGS	+=
+TFLAGS		+=
+		   
+all:	$(TARGET) 

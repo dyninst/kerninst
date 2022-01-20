@@ -1,0 +1,25 @@
+NO_IMPLICIT_TEMPLATES = true
+#USES_LIB_KERNINST_UTIL = true
+
+TARGET	      = regsettest
+
+SRCS	     += ../src/x86_reg_set.C \
+		../../immediates/src/uimm.C \
+		../../immediates/src/simm.C \
+		../../x86_reg/src/x86_reg.C \
+		../../bitutils/src/bitUtils.C \
+		../src/main.C
+#		../src/templates.C ../src/main.C
+
+IFLAGS	     += -I../../immediates/src -I../../x86_reg/src -I../../bitutils/src
+VPATH	     += ../src ../../immediates/src ../../x86_reg/src ../../bitutils/src
+
+LIBS 	     += 
+SYSLIBS	     += 
+
+
+CFLAGS		+=
+CXXFLAGS	+=
+TFLAGS		+=
+		   
+all:	$(TARGET) 

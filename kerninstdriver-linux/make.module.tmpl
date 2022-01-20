@@ -1,0 +1,43 @@
+CC		= /usr/bin/gcc
+CPP		= /usr/bin/g++
+LD		= /usr/bin/ld
+
+INCLUDES	+= -I../src
+CFLAGS 		+= -Wall -O2 $(INCLUDES)
+CXXFLAGS	+= $(CFLAGS)
+TFLAGS		+= -Wall -O2 $(INCLUDES) 
+CFLAGS		+= -D__KERNEL__ -DMODULE
+
+VPATH		+= ../src
+
+MODULE		= kerninst
+
+SRCS		+= ../src/kerninst.c \
+		   ../src/all_vtimers.c \
+		   ../src/calleeCounter.c \
+		   ../src/cswitch_inout.c \
+		   ../src/hash_table.c \
+		   ../src/kernInstIoctls.c \
+		   ../src/loggedAllocRequests.c \
+		   ../src/loggedWrites.c \
+		   ../src/physMem.c \
+		   ../src/stacklist.c \
+		   ../src/symbol_table.c
+
+OBJECTS		= $(patsubst %.C, %.o, $(filter %.C,$(notdir $(SRCS)))) \
+		$(patsubst %.c, %.o, $(filter %.c,$(notdir $(SRCS)))) \
+		$(patsubst %.s, %.o, $(filter %.s,$(notdir $(SRCS)))) \
+		$(patsubst %.S, %.o, $(filter %.S,$(notdir $(SRCS))))
+
+default: 	$(MODULE)
+
+
+
+$(MODULE):	$(OBJECTS)
+		$(LD) ${LDFLAGS} -r -o $@ $(OBJECTS)
+
+clean:
+	/bin/rm -f $(MODULE) *.o *~
+
+install:
+	./install_script

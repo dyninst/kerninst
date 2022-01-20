@@ -1,0 +1,173 @@
+#
+# This file defines the things that should be common to all "libraries"
+# in the paradyn build tree.  It depends on things like SRCS and
+# TARGET being set correctly in the module-specific template and the
+# architecture-specific Makefile.
+# 
+# $Id: make.library.tmpl,v 1.3 2002/05/03 20:39:18 mirg Exp $
+#
+
+BUILD_ID= -s $(SUITE_NAME) -v $(RELEASE_NUM)$(BUILD_MARK)$(BUILD_NUM)
+
+XTARGET	= $(basename $(basename $(TARGET)))
+VOUCHER	= V_$(XTARGET)
+
+$(VOUCHER):
+	@echo Updating build voucher information: $(VOUCHER)
+	$(BUILDSTAMP) $(BUILD_ID) $(XTARGET)
+	$(MODCC) -c $(VOUCHER).c
+
+VPATH		+= ../src
+
+OBJS =		$(patsubst %.C, %.o, $(filter %.C,$(notdir $(SRCS)))) \
+		$(patsubst %.c, %.o, $(filter %.c,$(notdir $(SRCS)))) \
+		$(patsubst %.y, %.o, $(filter %.y,$(notdir $(SRCS)))) \
+		$(patsubst %.l, %.o, $(filter %.l,$(notdir $(SRCS)))) \
+		$(patsubst %.s, %.o, $(filter %.s,$(notdir $(SRCS)))) \
+		$(patsubst %.S, %.o, $(filter %.S,$(notdir $(SRCS)))) \
+		$(IGEN_GEN_SRCS:%.C=%.o)
+
+ifndef UNCOMMON_LINK
+$(TARGET): $(OBJS)
+	@$(RM) $(TARGET)
+	@$(MAKE) $(VOUCHER)
+	$(AR) crv $(TARGET) $(VOUCHER).o $(OBJS)
+	$(RANLIB) $(TARGET)
+
+ifdef TARGET2
+XTARGET2= $(basename $(TARGET2))
+VOUCHER2= V_$(XTARGET2)
+
+$(TARGET2): $(OBJS2)
+	@$(RM) $(TARGET2)
+	@$(MAKE) $(VOUCHER2)
+	$(AR) crv $(TARGET2) $(VOUCHER2).o $(OBJS2)
+	$(RANLIB) $(TARGET2)
+endif  # TARGET2
+
+ifdef TARGET3_SO
+XTARGET3= $(basename $(basename $(TARGET3_SO)))
+VOUCHER3= V_$(XTARGET3)
+
+$(TARGET3_SO): $(OBJS)
+	@$(RM) $(TARGET3_SO)
+	@$(MAKE) $(VOUCHER3)
+	$(LD) $(LDFLAGS) -o $(TARGET3_SO) $(VOUCHER3).o $(OBJS) $(LIBS)
+endif  # TARGET3_SO
+endif  # UNCOMMON_LINK
+
+ifndef DEST
+DEST		= $(TO_CORE)/$(LIBRARY_DEST)
+endif
+
+echo:
+	echo $(OBJS)
+
+ifndef UNCOMMON_INSTALL
+
+ifndef TARGET3_SO
+install: $(DEST)/$(TARGET)
+
+$(DEST)/$(TARGET):  $(TARGET)
+	-$(CP) $(TARGET) $(DEST)
+	$(RANLIB) $(DEST)/$(TARGET)
+
+else
+
+install: $(DEST)/$(TARGET3_SO)
+
+$(DEST)/$(TARGET3_SO): $(TARGET3_SO)
+	-$(CP) $(TARGET3_SO) $(DEST)
+
+endif
+
+#
+# definition for secondary library
+#
+ifdef TARGET2
+install: $(DEST)/$(TARGET2)
+
+$(DEST)/$(TARGET2):  $(TARGET2)
+	-$(CP) $(TARGET2) $(DEST)
+	$(RANLIB) $(DEST)/$(TARGET2)
+endif
+
+#
+#  definition for USES_LIBDYNINSTRT_SO
+#
+ifdef TARGET3
+install: $(DEST)/$(TARGET3)
+
+$(DEST)/$(TARGET3):  $(TARGET3)
+	-$(CP) $(TARGET3) $(DEST)
+endif
+
+endif      # ifndef UNCOMMON_INSTALL
+
+#
+# dependency generation definitions
+#
+
+.PHONY : depend
+depend:
+	$(RM) DEPENDS
+	$(MAKE) DEPENDS
+
+# 
+# Define DEPENDS dependencies such that the DEPENDS files depends on
+# the .I files, not the .[Ch] files; otherwise, DEPENDS get rebuilt
+# all the time.  We do need to build the Igen-generated files before
+# updating DEPENDS, however,
+#
+ifdef IGEN_ISRCS
+ifdef EXPLICIT_DEPENDS
+DEPENDS:
+else
+DEPENDS: $(SRCS) $(IGEN_ISRCS)
+endif
+	touch DEPENDS
+	$(MAKE) $(IGEN_GEN_SRCS)
+	$(MAKE) $(SRCS)
+	$(MODCC) $(GEN_DEPENDENCY_FLAG) $(MODCFLAGS) $(SRCS) $(IGEN_GEN_SRCS) | grep -v "SUNWspro" > DEPENDS
+#	makedepend -fDEPENDS -- $(CFLAGS) $(SRCS) $(IGEN_SRCS) $(NOPED_SRCS)
+else
+ifdef EXPLICIT_DEPENDS
+DEPENDS:
+else
+DEPENDS: $(SRCS)
+endif
+	touch DEPENDS
+	$(MAKE) $(SRCS)
+ifeq ($(MODCC),cc)
+	gcc $(GEN_DEPENDENCY_FLAG) $(MODCFLAGS) $(SRCS) | grep -v "SUNWspro" > DEPENDS
+else
+	$(MODCC) $(GEN_DEPENDENCY_FLAG) $(MODCFLAGS) $(SRCS) | grep -v "SUNWspro" > DEPENDS
+endif
+#	makedepend -fDEPENDS -- $(CFLAGS) $(SRCS)
+endif
+
+
+#.depend.% %.C:
+#	makedepend -fDEPENDS -- $(CFLAGS) $(SRCS)
+
+pure:
+
+
+#
+# A few pattern rules for simplicity in handling igen-generated files.
+#
+
+%.xdr.C %.xdr.CLNT.C %.xdr.CLNT.h %.xdr.SRVR.C %.xdr.SRVR.h %.xdr.h: %.I
+	$(IGEN) -shortnames -xdr $(ICFLAGS) $<
+
+%.thread.C %.thread.CLNT.h %.thread.SRVR.h %.thread.h: %.I
+	$(IGEN) -thread $(ICFLAGS) $<
+
+
+clean:
+	$(RM) DEPENDS *~ *.o *.[hC] *.a *.so* $(TARGET) $(VOUCHER).c
+
+#
+# include the dependencies.
+#
+include DEPENDS

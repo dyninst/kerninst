@@ -1,0 +1,74 @@
+#!/bin/sh
+
+MODULE=kerninst
+KERNINSTMALLOC_PATH=../kerninstmalloc/ppc64-unknown-linux2.4
+KERNINSTMALLOC_MODULE=kerninstmalloc
+KERNEL_REV=`uname -r`
+KERNEL_DRIVERS_DIR=/lib/modules/${KERNEL_REV}/kernel/drivers/char
+DEVICE_NAME=/dev/${MODULE}
+
+which powerpc64-linux-gcc &> /dev/null
+if [ $? -eq 0 ]; then
+   CROSS_COMPILER="CROSS_COMPILER_ONLY=1"
+else
+   CROSS_COMPILER=""
+fi
+
+if [ ! -f kerninst ]; then
+   export PLATFORM="ppc64-unknown-linux2.4"
+   make $CROSS_COMPILER
+   if [ $? -ne 0 ]; then
+      echo "ERROR: unable to build the kerninst driver, please see output above for more info." 
+      exit 1
+   fi
+fi
+if [ ! -f ../kerninstmalloc/ppc64-unknown-linux2.4/kerninstmalloc ]; then
+   cd ../kerninstmalloc/ppc64-unknown-linux2.4 && make $CROSS_COMPILER && cd -
+   if [ $? -ne 0 ]; then
+      echo "ERROR: unable to build the kerninstmalloc driver, please see output above for more info." 
+      exit 1
+   fi
+fi
+
+if [[  $1 != "-makeonly" ]]; then
+
+   # copy driver to standard location
+
+   echo - Copying module to ${KERNEL_DRIVERS_DIR}
+   if [ $(uname -m) = "ppc64" ]; then
+      /bin/cp ${KERNINSTMALLOC_PATH}/${KERNINSTMALLOC_MODULE} ${KERNEL_DRIVERS_DIR}
+   fi
+   /bin/cp ${MODULE} ${KERNEL_DRIVERS_DIR}
+   echo
+
+   # remove old driver, if any
+
+   echo - Removing old module and device node, if present
+   /sbin/rmmod ${MODULE}
+   if [ $(uname -m) = "ppc64" ]; then
+      /sbin/rmmod ${KERNINSTMALLOC_MODULE}
+   fi
+   /bin/rm -f ${DEVICE_NAME} > /dev/null 2>&1
+   echo
+
+   # insert the new driver and create new device node
+
+   if [ $(uname -m) = "ppc64" ]; then
+      echo - Adding kerninstmalloc driver
+      /sbin/insmod -S ${KERNINSTMALLOC_PATH}/${KERNINSTMALLOC_MODULE}
+      if [ $? -ne 0 ]; then
+         echo - ERROR: attempt to insert kerninstmalloc module failed, see above messages  
+         exit 1
+      fi
+   fi
+   echo - Adding new kerninst driver
+   /sbin/insmod -S  ${MODULE}
+   if [ $? -eq 0 ]; then
+     MAJOR=`cat /proc/devices | grep ${MODULE} | awk '{print $1}'`
+     echo - Found major number of kerninst driver to be ${MAJOR}, setting up device node
+     /bin/mknod ${DEVICE_NAME} c ${MAJOR} 0
+     /bin/chmod 664 ${DEVICE_NAME}
+   else
+     echo - ERROR: attempt to insert kerninst driver failed, see above messages
+   fi
+fi # end if ! -makeonly

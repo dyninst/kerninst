@@ -1,0 +1,565 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+  <title>Kerninst API Programming Guide</title>
+  <meta http-equiv="content-type"
+ content="text/html; charset=ISO-8859-1">
+</head>
+<body>
+<h1>Kerninst API Programming Guide</h1>
+
+<ol>
+    <li> <a href="#Introduction">Introduction</a> </li>
+    <li> <a href="#Supported_Platforms">Supported Platforms</a> </li>
+    <li> <a href="#Overview">System Overview</a> </li>
+    <li> <a href="#Abstractions">Abstractions</a> </li>
+    <li> <a href="#Simple_Example">Simple Example</a> </li>
+    <li> <a href="#Advanced_Topics">Advanced Topics</a><br>
+        <ul>
+            <li> <a href="#Complex_Code">Complex Code</a> </li>
+            <li> <a href="#Timer_Usage">Timer & Performance Counter Usage</a> </li>
+            <li> <a href="#Pid_Predicates">Per-process Instrumentation</a> </li>
+            <li> <a href="#Function_Replacement">Function Replacement</a> </li>
+            <li> <a href="#Callee_Watching">Dynamic Callsite Watching</a> </li>
+        </ul>
+    </li>
+</ol>
+
+<a name="Introduction"></a><h2>1. Introduction</h2>
+
+<p>This document describes the Kerninst Application Programming Interface 
+(KAPI), 
+which allows a programmer to build tools for modifying an OS kernel on the 
+fly. There are many reasons why you may want to do this, for example: 
+performance profiling (inject timers at selected locations in the kernel), 
+tracing (insert calls to tracing routines anywhere you want), dynamic code 
+optimization (replace a function with a better-optimized version on 
+the fly).</p>
+
+<p>If you are looking for an in-depth description of the KAPI classes and 
+methods, please refer to the Kerninst API Reference Guide. For installation
+information, refer to the 'INSTALL' file after downloading and unpacking 
+either the source or binary distribution.</p>
+
+<a name="Supported_Platforms"></a><h2>2. Supported Platforms</h2>
+The following configurations are currently supported.
+<table border="1">
+<tr>
+<td></td>
+<td><h3>Sparc/Solaris</h3></td>
+<td><h3>IA-32/Linux</h3></td>
+<td><h3>PowerPC/Linux</h3></td>
+</tr>
+
+<tr>
+<td><b>Processor Architecture:</b></td>
+<td>Sun UltraSparc I, II, or III</td>
+<td>Intel x86; AMD Athlon</td>
+<td>IBM PowerPC</td>
+</tr>
+<tr>
+<td><b>SMP Support:</b></td>
+<td> Yes </td>
+<td> Yes </td>
+<td> Yes </td>
+</tr>
+<tr>
+<td><b>OS Version:</b></td>
+<td>Sun Solaris 7 or 8</td>
+<td>Linux 2.4.x or 2.6.x</td>
+<td>Linux 2.4.x</td>
+</tr>
+<tr>
+<td><b>32-bit / 64-bit:</b></td>
+<td> Yes / Yes</td>
+<td> Yes / No</td>
+<td> No  / Yes</td>
+</tr>
+</table>
+
+<a name="Overview"></a><h2>3. System Overview</h2>
+<center><img src="kapi-system.jpg" title="Figure 1: Kerninst System"></center>
+<p>A typical KAPI-based system is shown in Figure 1. The end user launches 
+and interacts with an instrumentation tool written using C++ to instrument the 
+kernel of a machine on the network. For the remainder of this document, we 
+will refer to this tool as the mutator. The mutator translates end user's 
+requests into calls to KAPI. The goal of this document 
+is to describe how programmers can write their own mutators.</p>
+
+<p>One of the key features of the KAPI is support for remote instrumentation. 
+A mutator can run on one machine and instrument another machine's kernel 
+over the network. To support this functionality, the system contains the 
+third component, the Kerninst daemon, or kerninstd. Kerninstd listens for 
+incoming network connections from mutators and performs their 
+instrumentation requests. This structure allows the programmer to isolate 
+the machine resources used by the mutator program from the kernel on the 
+machine being instrumented.</p>
+
+<p>Finally, to implement certain low-level operations that cannot be done 
+from the user space, we install a small kernel driver on the machine being 
+instrumented. This driver is associated with the /dev/kerninst device node 
+to allow communication with kerninstd.</p>
+
+<a name="Abstractions"></a><h2>4. Abstractions</h2>
+
+<p> The KAPI is based on two abstractions, instrumentation points and 
+snippets. Instrumentation points are places of interest within the kernel
+where instrumentation can be inserted. Instrumentation snippets represent
+some portion of executable code to be inserted at an instrumentation point.
+As an example, if we wished to know the number of times some kernel function
+was invoked, the instrumentation snippet would be an expression to increment 
+a counter and the point would be the first instruction of the function.
+</p>
+
+<p> In general, points can be any instruction in the kernel or loadable 
+modules. However, the most common points are the entries and exits of 
+functions and basic blocks. In the KAPI, the only information a programmer 
+needs to define an instrumentation point is an address within the kernel.
+</p> 
+
+<p>Snippets can be used to represent most programming constructs,
+including but not limited to conditionals, assignments, and function calls.
+For a complete list of the types of snippets, refer to information on the
+'kapi_snippet' class in the KAPI Reference Guide. Snippets are expressed in 
+Abstract Syntax Tree (AST) form. The code in AST form is best visualized as a 
+tree, with intermediate nodes representing the operators in the expression and 
+leaves representing the operands. The post-order traversal of the tree 
+(evaluate children, compute your own value from the children's value) will 
+produce the desired value of the entire expression. For example, an AST for
+the expression '<code>A = ((B * C) + D) / (E - F)</code>' is shown in the 
+following figure. 
+</p>
+<center><img src="ast-example.jpg" title="Figure 2: AST Example"></center>
+
+<p>In KAPI code, snippets (AST expressions) take the following form: 
+<code>expression_type(operator_type, operand [, operand ...])</code>
+, where the operands are also snippets. Referring back to the previous
+expression, the KAPI code to represent the expression would be as follows:
+</p>
+<p><code><pre>
+kapi_int_variable A(<i>addr_of_A</i>);
+kapi_int_variable B(<i>addr_of_B</i>);
+kapi_int_variable C(<i>addr_of_C</i>);
+kapi_int_variable D(<i>addr_of_D</i>);
+kapi_int_variable E(<i>addr_of_E</i>);
+kapi_int_variable F(<i>addr_of_F</i>);
+...
+kapi_arith_expr assign_A(kapi_assign, A,
+                         kapi_arith_expr(kapi_divide,
+                                         kapi_arith_expr(kapi_plus,
+                                                         kapi_arith_expr(kapi_times, B, C),
+                                                         D),
+                                         kapi_arith_expr(kapi_minus, E, F)));
+</pre></code></p>
+
+<p>Note that the above is just one way to code the assignment to A. Another
+one follows:</p>
+<p><code><pre>
+kapi_arith_expr B_times_C(kapi_times, B, C);
+kapi_arith_expr dividend(kapi_plus, B_times_C, D);
+kapi_arith_expr divisor(kapi_minus, E, F);
+kapi_arith_expr assign_A(kapi_assign, A, kapi_arith_expr(kapi_divide, dividend, divisor));
+</pre></code></p>                                                
+
+<p>The advantages of using declared variables for common expressions are 
+obvious, reuse and less typing.</p>
+          
+
+<a name="Simple_Example"></a><h2>5. Simple Example</h2>
+<p>This section provides a brief overview of the programming 
+interface by showing how the count_func example mutator is implemented. 
+This mutator allows the user to monitor how often a particular kernel function 
+is executed. It does this by injecting a small fragment of code at the 
+entry point of the chosen kernel function to increment a counter every time 
+the function is invoked. The implementation of this mutator follows a pattern 
+representative of many other instrumentation tools. We summarize the main 
+steps below.</p>
+
+<ol>
+<li>The tool attaches to the kernel on the target machine - the one 
+    running kerninstd.</li>
+<li>The instrumentation point, the entry point to the
+    kernel function requested by the user, is located.</li>
+<li>Space to hold the value of the counter is allocated and initialized
+    to zero.</li>
+<li>An AST expression is generated to increment the counter.
+<li>The generated expression is inserted at the point of interest. The
+    KAPI library takes care of converting the AST expression into machine
+    code. Whenever the function is entered, the instrumentation code 
+    will now be executed.</li>
+<li>The mutator enters the main loop where it handles events coming from
+    the API, and reads and prints the value of the counter every second.</li>
+</ol>
+
+<p>The following is the source code listing for 'count_func.C', annotated
+with explanatory comments.</p>
+
+<p><code><pre>
+// count_func.C - mutator to count the number of entries to a user-specified
+//                kernel function
+
+#include &lt;iostream&gt;
+#include &lt;time.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;unistd.h&gt;
+
+// We must include the KAPI library header
+#include "kapi.h"
+
+using namespace std;
+
+// Correct usage is: "count_func hostname port# module function"
+// "hostname" - the name of the host where kerninstd is running
+// "port#" - the listening port supplied by kerninstd
+// "module" - the name of a kernel module
+// "function" - the name of a function of interest within module
+int usage(char *arg0)
+{
+    cerr << "Usage: " << arg0 << " &lt;hostname> &lt;port#> &lt;module> &lt;function>\n";
+    return (-1);
+}
+
+// The global kapi_manager object, starting point for all KAPI interactions
+kapi_manager kmgr;
+
+// Useful function that detaches from kerninstd when an error is detected
+// on return from some KAPI call
+void error_exit(int retval)
+{
+    kmgr.detach();
+    exit(retval);
+}
+
+int main(int argc, char **argv)
+{
+    int rv = 0;
+
+    if (argc != 5) {
+	return usage(argv[0]);
+    }
+
+    // Grab the arguments
+    const char *host = argv[1];
+    int port = atoi(argv[2]);
+    const char *modName = argv[3];
+    const char *funcName = argv[4];
+
+    // Attach to kerninstd on the target host using the supplied port
+    if ((rv = kmgr.attach(host, port)) < 0) {
+        cerr << "attach error\n";
+        return rv;
+    }
+
+    // Find the module of interest, initialize kmod
+    kapi_module kmod;
+    if ((rv = kmgr.findModule(modName, &kmod)) < 0) {
+        cerr << "findModule error\n";
+        error_exit(rv);
+    }
+
+    // Find the function of interest, initialize kfunc
+    kapi_function kfunc;
+    if ((rv = kmod.findFunction(funcName, &kfunc)) < 0) {
+        cerr << "findFunction error\n";
+        error_exit(rv);
+    }
+
+    // Find the instrumentation point: the entry to the function
+    kapi_vector<kapi_point> entries;
+    if ((rv = kfunc.findEntryPoint(&entries)) < 0) {
+        cerr << "findEntryPoint error\n";
+	error_exit(rv);
+    }
+
+    // Allocate space for the counter in the kernel space. The kptr_t
+    // type denotes a pointer to kernel memory, but is defined in 
+    // kapi.h as an unsigned integer of the appropriate size
+    kptr_t addr;
+    unsigned size = sizeof(kapi_int_t);
+    if ((addr = kmgr.malloc(size)) == 0) {
+	cerr << "malloc error\n";
+	error_exit(addr);
+    }
+
+    // Initialize the kernel memory, by copying from local variable
+    kapi_int_t user_copy = 0;
+    if ((rv = kmgr.memcopy(&user_copy, addr, size)) < 0) {
+	cerr << "memcopy error\n";
+	error_exit(rv);
+    }
+
+    // Create an int variable at the allocated space
+    kapi_int_variable intCounter(addr);
+    
+    // Generate code to increment the variable atomically. The use of 
+    // kapi_atomic_assign is suggested versus kapi_assign when the host on 
+    // which kerninstd is running is a multi-processor, since an atomic
+    // assignment prevents race conditions due to simultaneous access to
+    // the intCounter variable
+    kapi_arith_expr code(kapi_atomic_assign, intCounter, 
+			 kapi_arith_expr(kapi_plus, intCounter, 
+					 kapi_const_expr(1)));
+
+    // Insert the snippet code at the function entry point, and record
+    // the value of the handle returned for later use in removal. Note that
+    // the following code only inserts the snippet at the first entry
+    // point, while it is possible that a kernel function may have
+    // multiple entry points due to interprocedural jumps into the middle
+    // of the function. In such a case, the insertSnippet call should
+    // be made for each element in the entries kapi_vector.
+    int sh;
+    if ((sh = kmgr.insertSnippet(code, entries[0])) < 0) {
+	cerr << "insertSnippet error\n";
+	error_exit(sh);
+    }
+
+    // Loop for twenty seconds
+    time_t t = time(NULL);
+    while (time(NULL) - t < 20) {
+
+        // Handle any pending KAPI events
+	kmgr.handleEvents();
+
+        // Read the in-kernel value of intCounter
+	if ((rv = kmgr.memcopy(addr, &user_copy, size)) < 0) {
+	    cerr << "memcopy error\n";
+	    error_exit(rv);
+	}
+	// The client's byte ordering may not match that of the kernel
+	kmgr.to_client_byte_order(&user_copy, size);
+	cout << "# Entries = " << user_copy << endl;
+
+        // Sleep for one second before continuing loop
+	sleep(1);
+    }
+
+    // Remove the inserted code snippet from the function entry point
+    // using the snippet handle returned by the call to insertSnippet
+    if ((rv = kmgr.removeSnippet(sh)) < 0) {
+	cerr << "removeSnippet error\n";
+	error_exit(rv);
+    }
+    
+    // Free the kernel memory allocated to hold intCounter
+    if ((rv = kmgr.free(addr)) < 0) {
+	cerr << "free error\n";
+	error_exit(rv);
+    }
+    
+    // Detach from the kerninstd
+    if ((rv = kmgr.detach()) < 0) {
+	cerr << "detach error\n";
+    }
+
+    return rv;
+}
+</pre></code></p>
+
+<a name="Advanced_Topics"></a><h2>6. Advanced Topics</h2>
+
+<a name="Complex_Code"><h3>6.1 Complex Code</h3></a> 
+<p>As can be seen from the example in <a href="#Abstractions">section 4</a>,
+even simple expressions require a moderate amount of code to generate the
+corresponding KAPI snippet. A progammer may find it tedious to implement
+complex functions using only KAPI snippets. However, it is a very common 
+occurence to require complex functions, as is the case for performing
+<a href="#Function_Replacement">function replacement</a>, where the programmer
+substitutes their own version of a kernel function in its place. As such,
+it is suggested that the programmer make use of kernel modules written in C 
+for implementing complex functions. When there are only a couple such 
+functions required, it is recommended to code the functions within the 
+Kerninst driver
+source. If the programmer requires many complex functions, it is suggested
+that a new module be written (possibly modeled after the Kerninst driver
+source and build files) that contains the necessary functionality. After 
+building the module and loading it into the kernel, the 
+functions will be available to call from KAPI instrumentation snippets. Note
+that only loadable modules inserted before the kerninst driver will be
+available for instrumentation and analysis by KAPI, so any external modules
+written by the user should be loaded before the kerninst driver.
+</p>
+
+<a name="Timer_Usage"><h3>6.2 Timer & Performance Counter Usage</h3></a> 
+<p>One of the most useful parts of the KAPI is the ability to read
+the performance counters of the target machine's processor. The 
+<code>kapi_hwcounter_expr</code> snippet is defined to represent a reading
+of the processor counter associated with the <code>kapi_hwcounter_kind</code>
+used to define the snippet. A popular <code>kapi_hwcounter_kind</code>
+value is <i>HWC_TICKS</i>, which represents the processor tick counter, 
+a register that keeps track of the number of
+processor cycles that have been executed since the machine was booted. To
+implement a fairly accurate function timer, one just needs to read the
+tick register at entry and exit to the function, calculate the difference,
+and convert to a time value based on the speed of the processor. Unfortunately,
+a number of issues complicate the use of such timers. For example, the simple
+scheme given does not account for function recursion, nor is it safe for
+use on multiprocessor machines. Perhaps even worse is that it does not
+account for the possiblity that a process context-switch occurs between
+the two tick readings. In order to deal with these issues, we have written
+a KAPI timer library that provides support for two types of timers implemented
+to safely handle the above problems.</p>
+
+<p>The timer library, named 'kapi_timer_lib.h' and provided along with the
+other example mutators, supports <i>virtual</i> timers 
+defined to represent any of the values of <code>kapi_hwcounter_kind</code>. 
+A <i>virtual</i> timer measures hardware counter events occuring from timer 
+start to stop, excluding "time" switched-out due to process context-switches.
+A <i>wall</i> timer measures the virtual time, and additionally adds time
+spent switched-out for all threads of execution within the code. Thus, wall
+timers provide an insight into the total work time of threads (thread-seconds,
+analogous to man-hours) from timer start to stop. Wall timers are currently
+only supported for <i>HWC_TICKS</i>.
+Both types of timers are kept on a per-processor basis and are recursion-safe. 
+An overview of the interfaces to the timer library is given below.
+</p>
+
+<b><code>ierr initialize_vtimer_environment(kapi_manager &the_mgr)</code></b>
+<br>
+<p style="margin-left: 20px;">
+This function must be called before any of the others in the library, 
+and is responsible for initializing the kernel environment and library state
+used to support timer management. The most important action of this function
+is to locate the context-switch handling routines in the kerninst driver and
+insert calls to these routines at the kernel context-switch points. The only 
+argument is a reference to the global kapi_manager object. Like most
+other KAPI methods, the return value is zero on success, or a negative error
+code.</p>
+
+<b><pre><code>
+int add_vtimer(kapi_hwcounter_kind type,
+               const kapi_vector&lt;kapi_point> &start_points,
+               const kapi_vector&lt;kapi_point> &stop_points,
+               bool is_wall,
+               data_callback_t sample_routine = NULL, 
+               unsigned sample_freq_ms = 1000)</code></pre></b>
+<p style="margin-left: 20px;">
+This function can be used to add a timer of the specified <code>type</code>.
+When a timer is added, the following actions are taken: (1) memory to hold
+the timer's per-processor values is allocated in the kernel, (2) timer start
+and stop routines are placed at the requested points, and (3) sampling of
+the timer's values is started (if requested). 
+The <code>start_points</code> vector is the set of points at which to place
+timer start code, and <code>stop_points</code> similarly represents the points
+at which to place stop code. The boolean <code>is_wall</code> parameter, when
+set to <i>true</i>, denotes that the timer should be a <i>wall</i> timer 
+instead of a <i>virtual</i> timer (NOTE: wall timers are currently only 
+supported for type <i>HWC_TICKS</i>). The last two parameters can be used to
+specify the sampling behavior for this timer. If <code>sample_routine</code>
+is set to NULL, no sampling will be done (although this pretty much makes
+the timer useless). If you desire the timer's per-processor values to be 
+sampled, provide the name of an appropriate sample handling routine to be 
+invoked when samples of this timer arrive 
+(NOTE: invocation of the sample handler routine 
+is taken care of by the call to <code>kapi_manager::handleEvents()</code>).
+A default sample handling routine is defined by the library, and named
+<code>default_sample_callback</code>. The <code>sample_freq_ms</code>
+parameter defines the desired sample frequency in milliseconds, and has 
+a default value of one second.
+The function returns a timer handle to be used for later removing the timer, 
+or a negative error code.</p>
+
+<b><code>void remove_vtimers(const kapi_vector&lt;int> &vtimer_id_list)</code></b>
+<br>
+<p style="margin-left: 20px;">
+This function can be used to deactivate the timers whose handles are 
+listed in the <code>vtimer_id_list</code> parameter. Deactivation includes
+removal of the timer start and stop code, stopping sampling for the timer, 
+and deallocating memory allocated to hold the timer values. 
+</p>
+
+<b><code>ierr cleanup_vtimer_environment(void)</code></b>
+<br>
+<p style="margin-left: 20px;">
+This function must be called last and is responsible for cleaning up 
+the kernel environment and library state used to support timer management. 
+This function is responsible for deactivating any remaining active timers and
+removing the calls to the context-handling routines at the kernel 
+context-switch points. Like most other KAPI methods, the return value is 
+zero on success, or a negative error code.</p>
+
+<p>For an in-depth example of how to use the KAPI timer library, see the 
+example mutator named 'time_func.C', which shows how to use
+a timer on a specified kernel function. Also, there is an example mutator 
+for each supported platform, named '&lt;processor-type&gt;_perfctr_example.C', 
+that shows how to use the timer library for monitoring specific
+processor performance counters.</p>
+
+<a name="Pid_Predicates"><h3>6.3 Per-process Instrumentation</h3></a> 
+<p>By default, all instrumentation snippets inserted into the kernel will
+be active for all threads in execution at the instrumentation points. The
+KAPI does provide a mechanism for performing instrumentation only when
+a specified process (or list of processes) is executing at the point. This
+is accomplished using the kapi_pid_expr, which evaluates to the process id
+for the current thread of execution at the point. An example mutator 
+named 'pid_predicate.C' is provided that
+performs the same function as the count_func example described in 
+<a href="#Simple_Example">section 5</a>, but adds predication on a list
+of process id's supplied on the command line. Here we show the interesting
+portion of this example mutator's code:
+<br><pre>
+    // Generate code to increment the variable if process id
+    // in pid list
+    kapi_pid_expr pid_expr;
+    kapi_bool_expr check_pids(kapi_eq, pid_expr, kapi_const_expr(pid_list[0]));
+    for(unsigned i = 1; i < num_pids; i++) {
+       check_pids = kapi_bool_expr(kapi_log_or, check_pids,
+                                   kapi_bool_expr(kapi_eq, pid_expr, 
+                                                  kapi_const_expr(pid_list[i])));
+    }
+
+    kapi_arith_expr increment(kapi_assign, intCounter, 
+                              kapi_arith_expr(kapi_plus, intCounter, 
+                                              kapi_const_expr(1)));
+    
+    kapi_if_expr code(check_pids, increment);
+</pre><br>
+As you can see, we check to see if <code>pid_expr</code> 
+evaluates to one of the supplied pids in the <code>pid_list</code> array, 
+and if so execute the increment of the variable <code>intCounter</code>.
+</p>
+
+<a name="Function_Replacement"><h3>6.4 Function Replacement</h3></a> 
+<p>Function replacement is the ability for a programmer to substitute
+an alternate implementation of a kernel function for the default 
+implemenatation. There are two independent methods provided by the KAPI to 
+perform function replacement. Both methods are implemented to assume that the
+arguments to the original and replacement implementation of the function being
+replaced are identical. It is suggested that replacement versions of kernel
+functions be implemented in a kernel module rather than via KAPI snippets
+to assure correctness with respect to calling conventions and kernel
+data types.</p>
+
+<p>The first method provided by KAPI, which we refer to as 
+<i>true function replacement</i>, instruments the original function at its 
+very first instruction to place an unconditional control transfer to the 
+replacement. After the instrumentation has been performed, all calls made
+from anywhere in the kernel to the original function will be redirected 
+to the replacement function. See the example mutator 'replace_function.C'
+for an example of how to do true function replacement.</p>
+
+<p>The second method provided by KAPI, which we refer to as
+<i>callsite function replacement</i>, instruments a single callsite to replace
+the destination address of the call with the entry address of the replacement
+function. After the instrumentation has been performed, any time the
+modified callsite is executed, the replacement function will be called
+instead of the original. See the example mutator 'replace_function_call.C'
+for an example of how to do callsite function replacement.</p>
+
+<a name="Callee_Watching"><h3>6.5 Dynamic Callsite Watching</h3></a> 
+<p>The code analysis framework of KAPI allows the programmer to walk the 
+static call graph of the kernel by starting at a top-level function, 
+descending into its callees, and so on. See the documentation for 
+<code>kapi_function::getCallees()</code> in the KAPI Reference Guide for 
+details. Unfortunately, kernel code is full of indirect calls, where 
+targets are not known in advance. As a result, the static approach may 
+not be able to find all callees of some kernel function. Fortunately, the 
+KAPI provides primitives for discovering indirect callees at run time by 
+instrumenting the corresponding callsites and snooping on destination 
+addresses as the calls are made. The functions provided by KAPI for this
+purpose are documented in the 'Handling Indirect Calls' subsection of 
+the <code>class kapi_manager</code> description in the KAPI Reference Guide.
+An example mutator named 'watch_callees.C' is also provided as a point of
+reference for performing callee watching.</p>
+
+</body>
+</html>

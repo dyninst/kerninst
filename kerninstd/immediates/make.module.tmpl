@@ -1,0 +1,21 @@
+NO_IMPLICIT_TEMPLATES = true
+
+TARGET	      = immtest
+
+SRCS	     += ../src/uimm.C ../src/simm.C \
+		../../bitutils/src/bitUtils.C \
+	        ../src/templates.C \
+	        ../src/main.C
+
+VPATH		+= ../../bitutils/src
+
+IFLAGS		+= -I../../bitutils/src
+
+LIBS 	     += 
+SYSLIBS	     += 
+
+CFLAGS		+= 
+CXXFLAGS	+= 
+TFLAGS		+= 
+		   
+all:	$(TARGET) 

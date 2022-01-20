@@ -1,0 +1,20 @@
+NO_IMPLICIT_TEMPLATES = true
+USES_LIB_KERNINST_UTIL = true
+
+TARGET	      = regtest
+
+SRCS	     += ../src/sparc_reg.C \
+		../src/templates.C \
+	        ../src/main.C
+
+VPATH	     += ../src ../../immediates/src ../../bitutils/src
+IFLAGS	     += -I../src -I../../immediates/src -I../../bitutils/src
+
+LIBS 	     += 
+SYSLIBS	     += 
+
+CFLAGS		+= 
+CXXFLAGS	+= 
+TFLAGS		+= 
+		   
+all:	$(TARGET) 

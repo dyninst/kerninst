@@ -1,0 +1,210 @@
+#
+# This file defines the things that should be common to all "programs"
+# in the paradyn build tree.  It depends on things like SRCS and
+# TARGET being set correctly in the module-specific template and the
+# architecture-specific Makefile.
+# 
+# $Id: make.program.tmpl,v 1.12 2004/04/22 21:15:52 mjbrim Exp $
+#
+
+BUILD_ID= -s $(SUITE_NAME) -v $(RELEASE_NUM)$(BUILD_MARK)$(BUILD_NUM)
+
+ifndef DEST
+DEST		= $(TO_CORE)/$(PROGRAM_DEST)
+endif
+
+ifndef TARGETS
+VOUCHER	= V_$(TARGET)
+$(VOUCHER):
+	@echo Updating build voucher information: $(VOUCHER)
+	$(BUILDSTAMP) $(BUILD_ID) $(TARGET)
+	$(MODCC) -c $(VOUCHER).c
+endif
+
+OBJS =		$(patsubst %.C, %.o, $(filter %.C,$(notdir $(SRCS)))) \
+		$(patsubst %.c, %.o, $(filter %.c,$(notdir $(SRCS)))) \
+		$(patsubst %.y, %.o, $(filter %.y,$(notdir $(SRCS)))) \
+		$(patsubst %.l, %.o, $(filter %.l,$(notdir $(SRCS)))) \
+		$(patsubst %.s, %.o, $(filter %.s,$(notdir $(SRCS)))) \
+		$(patsubst %.S, %.o, $(filter %.S,$(notdir $(SRCS)))) \
+		$(IGEN_GEN_SRCS:%.C=%.o)
+
+ifdef USES_GPROF
+CXXFLAGS 	+= -pg
+CFLAGS 		+= -pg
+LDFLAGS 	+= -pg -ldl
+endif
+
+ifdef USES_FLEX
+FLEX_LIB	= -lfl
+FLEX_DIR	= /s/flex/lib
+LIBDIR		+= $(patsubst %,-L%,$(FLEX_DIR))
+VPATH		+= $(FLEX_DIR)
+SYSLIBS		+= $(FLEX_LIB)
+endif
+
+ifdef USES_LIB_KERNINST_API
+KERNINST_API_DIR = $(TO_CORE)/kerninstapi/$(PLATFORM)
+LIBDIR 		+= -L$(KERNINST_API_DIR)
+LIBS		+= -lkerninstapi
+DEPLIBS		+= $(KERNINST_API_DIR)/libkerninstapi.a
+endif
+
+ifdef USES_LIB_KERNINST_UTIL
+KERNINST_UTIL_DIR = $(TO_CORE)/util/$(PLATFORM)
+LIBDIR 		 += -L$(KERNINST_UTIL_DIR)
+LIBS		 += -lkerninstutil
+DEPLIBS		 += $(KERNINST_UTIL_DIR)/libkerninstutil.a
+endif
+
+ifdef USES_LIB_PARADYN_UTIL
+LIBDIR		+= -L$(TO_PD_CORE)/pdutil/$(PLATFORM)
+ifdef BACKUP_CORE
+LIBDIR		+= -L$(BACKUP_CORE)/../$(PLATFORM)/lib
+endif
+LIBS		+= -lpdutil
+endif
+
+VPATH		+= ../src:$(TO_CORE)/$(LIBRARY_DEST)
+
+ifndef UNCOMMON_LINK
+$(TARGET): $(OBJS) $(DEPLIBS)
+	@$(MAKE) $(VOUCHER)
+	$(PURELINK) $(MODCC) -o $(TARGET) $(LDFLAGS) $(VOUCHER).o $(OBJS) $(LIBDIR) $(LIBS) $(SYSLIBS)
+endif
+
+PURIFY = purify
+
+ifndef UNCOMMON_LINK
+# The user may set APP_PURE_OPTIONS for application-specific purify options
+
+pure: $(OBJS) $(LIBS)
+	$(PURELINK) $(PURIFY) $(APP_PURE_OPTIONS) -best-effort -cache-dir=/tmp -chain-length=10 -$(MODCC) -collector=$(COLLECTOR) -linker=$(COLLECTOR) $(MODCC) -o $(TARGET) $(LDFLAGS) $(VOUCHER).o $(OBJS) $(LIBDIR) $(LIBS) $(SYSLIBS) -Wl,-Bstatic
+
+endif
+
+QUANTIFY = /s/quantify-3.0/bin/quantify
+
+ifndef UNCOMMON_LINK
+quantify: $(OBJS)
+	@$(MAKE) $(VOUCHER)
+	$(PURELINK) quantify -cache-dir=/tmp -$(MODCC) \
+	-collector=$(COLLECTOR) -linker=$(COLLECTOR) \
+	$(MODCC) -o $(TARGET) $(LDFLAGS) $(VOUCHER).o $(OBJS) $(LIBDIR) $(LIBS) $(SYSLIBS)
+endif
+
+ifndef UNCOMMON_LINK
+ifndef SLOWQPT
+SLOWQPT = -q
+endif
+
+ifdef EFENCE
+#LIBS += -lefence -lpthread -lposix4
+LIBS += -lefence -lpthread
+#LDFLAGS += -static
+endif
+
+qpt: $(OBJS)
+	@$(MAKE) $(VOUCHER)
+	$(MODCC) -static -o $(TARGET) \
+                $(LDFLAGS) $(VOUCHER).o $(OBJS) $(LIBDIR) $(LIBS) $(SYSLIBS)
+	# qpt's quick profiling may produce incorrect results in programs
+	# executing interprocedural jumps; this includes setjmp/longjmp.
+	# Hence we should set SLOWQPT to -s for paradyn
+	/unsup/qpt2/bin/qpt2 $(SLOWQPT) $(TARGET)
+endif
+
+echo:
+	echo $(VPATH)
+
+clean:
+	$(RM) DEPENDS *~ *.o *.[hC] $(TARGET) $(TARGETS) $(VOUCHER).c
+
+ifndef UNCOMMON_INSTALL
+install:  $(DEST)/$(TARGET)
+
+$(DEST)/$(TARGET): $(TARGET)
+	-$(CP) $(TARGET) $(DEST)
+endif
+
+.PHONY : depend
+depend:
+	$(RM) DEPENDS
+	$(MAKE) DEPENDS
+
+# 
+# Define DEPENDS dependencies such that the DEPENDS files depends on
+# the .I files, not the .[Ch] files; otherwise, DEPENDS get rebuilt
+# all the time.  We do need to build the Igen-generated files before
+# updating DEPENDS, however,
+#
+ifdef IGEN_ISRCS
+ifdef EXPLICIT_DEPENDS
+DEPENDS:
+else
+DEPENDS: $(SRCS) $(IGEN_ISRCS)
+endif
+	touch DEPENDS
+	$(MAKE) $(IGEN_GEN_SRCS)
+	$(MAKE) $(SRCS)
+	$(MODCC) $(GEN_DEPENDENCY_FLAG) $(MODCFLAGS) $(SRCS) $(IGEN_GEN_SRCS) | grep -v "SUNWspro" > DEPENDS
+#	makedepend -fDEPENDS -- $(CFLAGS) $(SRCS) $(IGEN_SRCS) $(NOPED_SRCS)
+else
+ifdef EXPLICIT_DEPENDS
+DEPENDS:
+else
+DEPENDS: $(SRCS)
+endif
+	touch DEPENDS
+	$(MAKE) $(SRCS)
+	$(MODCC) $(GEN_DEPENDENCY_FLAG) $(MODCFLAGS) $(SRCS) | grep -v "SUNWspro" > DEPENDS
+#	makedepend -fDEPENDS -- $(CFLAGS) $(SRCS)
+endif
+
+# DejaGnu / Expect / tcl stuff for regression testing:
+ifndef CHECK_TARGETS
+CHECK_TARGETS = $(TARGET)
+endif
+
+ifndef CHECK_TOOL
+CHECK_TOOL = $(TARGET)
+endif
+
+ifndef CHECK_TESTSUITE_DIR
+CHECK_TESTSUITE_DIR = ../testsuite
+endif
+
+# WARNING: TCL_LIBRARY must be /s/dejagnu/lib/tcl7.5 or else things won't work!
+
+ifndef CUSTOM_MAKE_CHECK
+check: $(CHECK_TARGETS)
+	runtest --tool $(CHECK_TOOL) --srcdir $(CHECK_TESTSUITE_DIR) $(DEJAGNU_OTHER_OPTIONS)
+endif
+	
+
+
+# A few pattern rules for simplicity.  The default lex rule is
+# redefined, just for the sake of cleanliness.  More important are the
+# igen rules; they "automatically" pick the correct type of igen to
+# run.  Actually, we can't do this completely "right" unless igen is
+# changed to generate different output files for the various type of
+# interfaces.
+#
+ 
+%.C: %.y
+	$(YACC) $(YFLAGS) $<
+	$(MV) y.tab.c $@
+
+%.C: %.l
+	$(LEX) -t $(LFLAGS) $< > $@
+
+%.xdr.C %.xdr.CLNT.C %.xdr.CLNT.h %.xdr.SRVR.C %.xdr.SRVR.h %.xdr.h: %.I
+	$(IGEN) -shortnames -xdr $(ICFLAGS) $<
+
+%.thread.C %.thread.CLNT.h %.thread.SRVR.h %.thread.h: %.I
+	$(IGEN) -thread $(ICFLAGS) $<
+
+#
+# include the dependencies.
+#
+include DEPENDS

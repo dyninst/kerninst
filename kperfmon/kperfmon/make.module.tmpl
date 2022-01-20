@@ -1,0 +1,117 @@
+TARGET	      = kperfmon
+
+USES_LIB_KERNINST_API = true
+USES_LIB_KERNINST_UTIL = true
+USES_LIB_PARADYN_UTIL = true
+
+TO_KERNINSTD = $(TO_CORE)/kerninstd
+TO_KPERFMON = $(TO_CORE)/kperfmon
+
+SRCS = \
+	$(TO_KPERFMON)/kperfmon/src/main.C \
+	$(TO_KPERFMON)/kperfmon/src/templates.C \
+	$(TO_KPERFMON)/kperfmon/src/funcHooks.C \
+	$(TO_KPERFMON)/kperfmon/src/disassCmd.C \
+	$(TO_KPERFMON)/kperfmon/src/kpmChildrenOracle.C \
+	$(TO_KPERFMON)/kperfmon/src/misc.C \
+	$(TO_KPERFMON)/kperfmon/src/tclCommands.C \
+	$(TO_KPERFMON)/kperfmon/src/visualizationUser.C \
+	$(TO_KPERFMON)/kperfmon/src/instrument.C \
+	$(TO_KPERFMON)/kperfmon/src/prompt.C \
+	$(TO_KPERFMON)/snippet/src/snippet.C \
+	$(TO_KPERFMON)/primitives/src/primitive.C \
+	$(TO_KPERFMON)/primitives/src/add2IntCounter64.C \
+	$(TO_KPERFMON)/primitives/src/vtimerCountedPrimitive.C \
+	$(TO_KPERFMON)/predicates/src/predicate.C \
+	$(TO_KPERFMON)/predicates/src/orPredicate.C \
+	$(TO_KPERFMON)/predicates/src/andPredicate.C \
+	$(TO_KPERFMON)/predicates/src/pidInSetPredicate.C \
+	$(TO_KPERFMON)/predicates/src/truePredicate.C \
+	$(TO_KPERFMON)/predicates/src/valueInRangePredicate.C \
+	$(TO_KPERFMON)/sampleHandler/src/sampleHandler.C \
+	$(TO_KPERFMON)/sampleHandler/src/allSampleHandlers.C \
+	$(TO_KPERFMON)/dataHeap/src/dataHeap.C \
+	$(TO_KPERFMON)/dataHeap/src/vectorHeap.C \
+	$(TO_KPERFMON)/visi/src/cmfSubscriber.C \
+	$(TO_KPERFMON)/visi/src/visiSubscriber.C \
+	$(TO_KPERFMON)/visi/src/outlinerGetBBCountsSubscriber.C \
+	$(TO_KPERFMON)/whereAxis/src/dynloadCallback.C \
+	$(TO_KPERFMON)/whereAxis/src/tkTools.C \
+	$(TO_KPERFMON)/whereAxis/src/scrollbar.C \
+	$(TO_KPERFMON)/whereAxis/src/abstractions.C \
+	$(TO_KPERFMON)/whereAxis/src/whereAxis.C \
+	$(TO_KPERFMON)/whereAxis/src/where4tree.C \
+	$(TO_KPERFMON)/whereAxis/src/where4treeConstants.C \
+	$(TO_KPERFMON)/whereAxis/src/rootNode.C \
+	$(TO_KPERFMON)/focus/src/focus.C \
+	$(TO_KPERFMON)/simpleMetrics/src/simpleMetric.C \
+	$(TO_KPERFMON)/simpleMetrics/src/ctr64SimpleMetric.C \
+	$(TO_KPERFMON)/simpleMetrics/src/add1AtEntry.C \
+	$(TO_KPERFMON)/simpleMetrics/src/add1AtExit.C \
+	$(TO_KPERFMON)/simpleMetrics/src/add1AtExitNoUnwindTailCalls.C \
+        $(TO_KPERFMON)/simpleMetrics/src/countedVEvents.C \
+	$(TO_KPERFMON)/simpleMetrics/src/metricVirtualizer.C \
+	$(TO_KPERFMON)/complexMetrics/src/vevents.C \
+	$(TO_KPERFMON)/complexMetrics/src/veventsPerInvoc.C \
+	$(TO_KPERFMON)/complexMetrics/src/veventsPerVTime.C \
+	$(TO_KPERFMON)/complexMetrics/src/veventsPerVEvents.C \
+	$(TO_KPERFMON)/complexMetrics/src/vinsnsPerVCycle.C \
+	$(TO_KPERFMON)/complexMetrics/src/allComplexMetrics.C \
+	$(TO_KPERFMON)/complexMetrics/src/complexMetric.C \
+	$(TO_KPERFMON)/complexMetrics/src/ctr64ComplexMetric.C \
+	$(TO_KPERFMON)/complexMetrics/src/entriesTo.C \
+	$(TO_KPERFMON)/complexMetrics/src/exitsFrom.C \
+	$(TO_KPERFMON)/complexMetrics/src/exitsFromNoUnwindTailCalls.C \
+	$(TO_KPERFMON)/metricFocus/src/simpleMetricFocus.C \
+	$(TO_KPERFMON)/metricFocus/src/allSimpleMetricFocuses.C \
+	$(TO_KPERFMON)/metricFocus/src/complexMetricFocus.C \
+	$(TO_KPERFMON)/metricFocus/src/metricFocusManager.C \
+        $(TO_KPERFMON)/outliningMgr/src/outlining1FnCounts.C \
+        $(TO_KPERFMON)/outliningMgr/src/outliningMgr.C \
+	$(TO_KPERFMON)/outliningMgr/src/blockCounters.C
+
+TO_VISILIB_IGEN = $(TO_PD_CORE)/visi/h
+IGEN_GEN_SRCS = visi.xdr.CLNT.C visi.xdr.C
+IGEN_ISRCS = $(TO_VISILIB_IGEN)/visi.I
+
+VPATH	     += $(TO_KPERFMON)/kperfmon/src \
+		$(TO_KPERFMON)/dataHeap/src \
+		$(TO_KPERFMON)/snippet/src \
+		$(TO_KPERFMON)/primitives/src \
+		$(TO_KPERFMON)/predicates/src \
+		$(TO_KPERFMON)/metricFocus/src \
+		$(TO_KPERFMON)/sampleHandler/src \
+		$(TO_KPERFMON)/simpleMetrics/src \
+		$(TO_KPERFMON)/complexMetrics/src \
+		$(TO_KPERFMON)/focus/src \
+		$(TO_KPERFMON)/visi/src \
+		$(TO_KPERFMON)/whereAxis/src \
+		$(TO_KPERFMON)/outliningMgr/src \
+		$(TO_VISILIB_IGEN)
+
+IFLAGS       += -I$(TO_PD_CORE) \
+		-I$(TO_KPERFMON)/kperfmon/src \
+		-I$(TO_KPERFMON)/dataHeap/src \
+		-I$(TO_KPERFMON)/snippet/src \
+		-I$(TO_KPERFMON)/primitives/src \
+		-I$(TO_KPERFMON)/predicates/src \
+		-I$(TO_KPERFMON)/metricFocus/src \
+		-I$(TO_KPERFMON)/sampleHandler/src \
+		-I$(TO_KPERFMON)/simpleMetrics/src \
+		-I$(TO_KPERFMON)/complexMetrics/src \
+		-I$(TO_KPERFMON)/focus/src \
+		-I$(TO_KPERFMON)/visi/src \
+		-I$(TO_KPERFMON)/whereAxis/src \
+		-I$(TO_KPERFMON)/outliningMgr/src \
+		-I$(TO_CORE)/kerninstapi/h
+
+LIBS 	     += 
+SYSLIBS	     += $(TCLTK_LIBS) $(X11_LIB) -lnsl -ldl
+
+# -ldl seems to be needed when we link against paradyn's tcl/tk 8.0 .a files:
+SYSLIBS	     += 
+
+CFLAGS		+= -D_KPERFMON_
+CXXFLAGS	+= -D_KPERFMON_
+		   
+all:	$(TARGET) 

@@ -1,0 +1,20 @@
+TOPDIR  = ..
+CC	= g++
+LD	= g++
+CFLAGS	= -g -I$(TOPDIR)/include
+LDFLAGS = -L$(TOPDIR)/lib
+LIBS = -lkerninstapi -lkerninstutil -lpdutil -lsocket -lnsl -ldl
+
+all: count_func time_func
+
+count_func: count_func.o
+	$(LD) $(LDFLAGS)  -o $@ $^ $(LIBS)
+count_func.o: count_func.C
+	$(CC) $(CFLAGS) -c $^
+time_func: time_func.o
+	$(LD) $(LDFLAGS)  -o $@ $^ $(LIBS)
+time_func.o: time_func.C
+	$(CC) $(CFLAGS) -c $^
+
+clean:
+	rm -f *.o count_func time_func

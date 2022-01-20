@@ -1,0 +1,25 @@
+# This is my first take of an expect script --ari
+
+#spawn ../../../sparc-sun-solaris2.6/immtest
+#sleep 1
+#send "welcome!\n"
+#
+#expect {
+#    "welcome!" {puts stdout "got expected welcome"}
+#    timeout {puts stderr "shit"}
+#}
+#puts stdout "moving on to stage 2 now"
+
+#immtest_start
+
+set timeout 60
+
+spawn ./immtest
+
+#send "supercalifrag"
+#send "ekome\n"
+
+expect {
+    "success" {pass "immediates test"}
+    timeout   {fail "(timeout) immediates test"}
+}

@@ -1,0 +1,41 @@
+#!/bin/bash
+      
+MODULE_NAME=kerninst
+KERNEL_REV=`uname -r`
+KERNEL_DRIVERS_DIR=/lib/modules/${KERNEL_REV}/kernel/extra
+DEVICE_NAME=/dev/${MODULE_NAME}
+
+if [ ! -f ../src/${MODULE_NAME}.ko ]; then
+  echo It appears the driver has not been built yet, please run 'make' first
+  exit
+fi
+
+# update module dependencies (let's modprobe know that kerninst mod exists)
+echo - Updating kernel module dependencies
+/sbin/depmod -v ${KERNEL_REV} --quick > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+  echo There was an error while running "/sbin/depmod -v ${KERNEL_REV} --quick".
+  echo Please run manually and resolve the problem.
+  exit
+fi
+echo
+
+# remove old driver, if any
+
+echo - Removing old module and device node, if present
+/sbin/modprobe -v -r ${MODULE_NAME}
+/bin/rm -f ${DEVICE_NAME} > /dev/null 2>&1
+echo
+
+# insert the new driver and create new device node
+
+echo - Adding new kerninst driver
+/sbin/modprobe -v ${MODULE_NAME}
+if [ $? -eq 0 ]; then
+  MAJOR=`cat /proc/devices | grep ${MODULE_NAME} | awk '{print $1}'`
+  echo - Found major number of kerninst driver to be ${MAJOR}, setting up device node
+  /bin/mknod ${DEVICE_NAME} c ${MAJOR} 0
+  /bin/chmod 664 ${DEVICE_NAME}
+else
+  echo - ERROR: attempt to insert kerninst driver failed, see above messages
+fi

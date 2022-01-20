@@ -1,0 +1,45 @@
+// skips.txt
+// skips file for the linux 2.4.x ppc64 kernel
+// 3-tuple: { what-to-skip, module, function }
+//    what-to-skip is one of:
+//      "a" if we can parse but cannot analyze this function
+//      "pa" if we cannot parse nor analyze this function
+//    (There is no "cannot parse but can analyze" since parsing is needed for analysis)
+
+// these are data in the text section of the kernel
+   { "pa", "kernel", ".swapper_pg_dir"},
+   { "pa", "kernel", ".pg0"},
+   { "pa", "kernel", ".pg1"},
+   { "pa", "kernel", ".empty_zero_page"},
+   { "pa", "kernel", ".ready"},
+   { "pa", "kernel", ".int_msg"},
+   { "pa", "kernel", ".idt_descr"},
+   { "pa", "kernel", ".gdt_descr"},
+   { "pa", "kernel", ".idt"},
+   { "pa", "kernel", ".gdt"},
+   { "pa", "kernel", ".stack_start"},
+   { "pa", "kernel", ".__start"},
+
+// long call/jmp to non KERNEL_CS segment, not supported
+   { "pa", "kernel", ".machine_real_restart"},
+   { "pa", "kernel", ".bios32_service"},
+   { "pa", "kernel", ".pci_bios_find_device"},
+   { "pa", "kernel", ".pci_bios_read"},
+   { "pa", "kernel", ".pci_bios_write"},
+   { "pa", "kernel", ".pcibios_set_irq_routing"},
+   { "pa", "kernel", ".pcibios_get_irq_routing_table"},
+   { "pa", "kernel", ".check_pcibios"},
+   { "pa", "kernel", ".apm_bios_call_simple"},
+   { "pa", "kernel", ".apm_bios_call"},
+
+//Functions that due to very odd linker magic have interprocedural jumps in the middle of a basic block
+//   { "pa", "kernel", ".ic_defaults"},
+//   { "pa", "kernel", ".abort"},
+//   { "pa", "kernel", ".pci_init_sl82c105"},
+//   { "pa", "kernel", ".free_bootmem"},
+//   { "pa", "kernel", ".free_inittmem"},
+//   { "pa", "kernel", ".rand_initialize"},
+//   { "pa", "kernel", ".fddiif_probe"},
+//   { "pa", "kernel", ".exit_notify"},
+//   { "pa", "kernel", ".dst_init"},
+//   { "pa", "kernel", ".kswapd_init"}

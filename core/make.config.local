@@ -1,0 +1,15 @@
+# local definitions
+
+BUILD_MARK=
+BUILD_NUM=-211
+
+#TCL/TK is required for all Paradyn builds, but not DyninstAPI
+TCLTK_DIR       = /p/paradyn/packages/tcl8.4.5
+TCLTK_LIB_DIR   = $(TCLTK_DIR)/lib
+TCLTK_INC_DIR   = $(TCLTK_DIR)/include
+
+#Uncomment the following line to build Paradyn with Tcl/Tk 8.3
+# instead of 8.4
+#USE_TCL83      = true
+
+FLEX_DIR	= /s/flex/lib

@@ -1,0 +1,38 @@
+NO_IMPLICIT_TEMPLATES = true
+
+# In ../../make....program, this symbol is checked for definition,
+# not for its value
+USES_LIB_KERNINST_UTIL = true
+
+TARGET	      = function
+
+SRCS         += ../src/function.C \
+		../../immediates/src/uimm.C \
+		../../immediates/src/simm.C \
+		../../bitutils/src/bitUtils.C \
+		../../basicblock/src/basicblock.C \
+
+IFLAGS	     += -I../../immediates/src -I../../bitutils/src \
+                -I../../archtraits/src -I../../x86_reg/src \
+                -I../../basicblock/src \
+		-I../../bitwise_dataflow_fn/src \
+                -I../../insnVec/src \
+                -I../../kmem/src \
+		-I../../xdr/src
+
+VPATH        += ../src ../../immediates/src ../../bitutils/src \
+                ../../archtraits/src ../../x86_reg/src \
+                ../../basicblock/src \
+		../../bitwise_dataflow_fn/src \
+                ../../insnVec/src \
+                ../../kmem/src \
+		../../xdr/src
+
+LIBS 	     += 
+SYSLIBS	     += 
+
+CFLAGS		+=
+CXXFLAGS	+=
+TFLAGS		+=
+		   
+all:	$(TARGET) 

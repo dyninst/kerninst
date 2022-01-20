@@ -1,0 +1,29 @@
+// skips.txt
+// skips file for the linux 2.4.x kernel
+// 3-tuple: { what-to-skip, module, function }
+//    what-to-skip is one of:
+//      "a" if we can parse but cannot analyze this function
+//      "pa" if we cannot parse nor analyze this function
+//    (There is no "cannot parse but can analyze" since parsing is needed for analysis)
+
+// these are data in the text section of the kernel
+   { "pa", "kernel", "swapper_pg_dir"},
+   { "pa", "kernel", "pg0"},
+   { "pa", "kernel", "pg1"},
+   { "pa", "kernel", "pg2"},
+   { "pa", "kernel", "pg3"},
+   { "pa", "kernel", "empty_zero_page"},
+   { "pa", "kernel", "ready"},
+   { "pa", "kernel", "int_msg"},
+   { "pa", "kernel", "idt_descr"},
+   { "pa", "kernel", "gdt_descr"},
+   { "pa", "kernel", "idt"},
+   { "pa", "kernel", "gdt"},
+   { "pa", "kernel", "stack_start"},
+
+// 16-bit code that we don't recognize as such, and fail to parse
+   { "pa", "kernel", "wakeup_code"},
+
+// other code that we can't analyze correctly
+   { "a", "kernel", "nmi_debug_stack_check"}
+

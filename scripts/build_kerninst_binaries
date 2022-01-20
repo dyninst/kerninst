@@ -1,0 +1,106 @@
+#!/bin/bash
+
+os=""
+
+if [ "$PLATFORM" == "" ]; then
+   echo "ERROR: PLATFORM is not set"
+   exit 1
+else
+   if [ "$PLATFORM" == "i386-unknown-linux2.6" ]; then
+      os="x86lnx"
+   elif [ "$PLATFORM" == "i386-unknown-linux2.4" ]; then
+      os="x86lnx" 
+   elif [ "$PLATFORM" == "sparc-sun-solaris2.7" ]; then
+      os="sol" 
+   elif [ "$PLATFORM" == "ppc64-unknown-linux2.4" ]; then
+      os="ppclnx" 
+   else
+      echo "ERROR: unknown platform $PLATFORM"
+      exit 1
+   fi
+fi
+
+if [ ! -f make.config ]; then
+   echo "ERROR: make.config is missing, make sure you are in top-level dir"
+   exit 1
+else
+   `dirname $0`/make-symlinks.$os      
+fi
+
+# Build Paradyn components
+
+ORIG_PLATFORM=$PLATFORM
+if [ "$os" == "sol" ]; then
+   PLATFORM="sparc-sun-solaris2.8"
+elif [ "$os" == "x86lnx" ]; then
+   PLATFORM="i386-unknown-linux2.4"
+fi
+
+cd core/igen/$PLATFORM
+make
+cd ../../..
+
+export PATH="${PWD}/core/igen/${PLATFORM}:${PATH}"
+
+cd core/pdutil/$PLATFORM
+make
+cd ../../..
+
+cd core/visi/$PLATFORM
+make
+cd ../../..
+
+cd core/visiClients/barchart/$PLATFORM
+make 'LIBS = -L../../../visi/${PLATFORM} -L../../../pdutil/${PLATFORM} -lvisi -lpdutil'
+cd ../../../..
+
+cd core/visiClients/histVisi/$PLATFORM
+make 'LIBS = -L../../../visi/${PLATFORM} -L../../../pdutil/${PLATFORM} -lvisi -lpdutil'
+cd ../../../..
+
+cd core/visiClients/tableVisi/$PLATFORM
+make 'LIBS = -L../../../visi/${PLATFORM} -L../../../pdutil/${PLATFORM} -lvisi -lpdutil'
+cd ../../../..
+
+PLATFORM=$ORIG_PLATFORM
+
+# Build the Kerninst components
+
+cd util/$PLATFORM
+make
+cd ../..
+
+if [ "$os" == "sol" ]; then
+   cd kerninstd/kerninstd/sparcv9-sun-solaris2.7; make
+   cd ../../..
+
+   cd kerninstapi/sparcv9-sun-solaris2.7; make
+   cd ../examples/sparcv9-sun-solaris2.7; make
+   cd ../../..
+
+   cd kperfmon/kperfmon/sparcv9-sun-solaris2.7; make
+   cd ../../..
+
+   cd kerninstdriver/sparcv9-sun-solaris2.7; make
+   cd ../sparcv9-sun-solaris2.8; make
+   cd ../..
+
+elif [ "$os" == "x86lnx" -o "$os" == "ppclnx" ]; then
+   cd kerninstd/kerninstd/$PLATFORM; make
+   cd ../../..
+
+   cd kerninstapi/$PLATFORM; make
+   cd ../examples/$PLATFORM; make
+   cd ../../..
+
+   cd kperfmon/kperfmon/$PLATFORM; make
+   cd ../../..
+
+   cd kerninstdriver-linux/$PLATFORM; 
+   if [ "$os" == "x86lnx" ]; then
+      make
+   else
+      ./install_script -makeonly
+   fi
+   cd ../..
+fi

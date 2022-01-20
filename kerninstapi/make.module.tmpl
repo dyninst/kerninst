@@ -1,0 +1,139 @@
+TARGET	      = libkerninstapi.a
+
+# Take it away?
+USES_LIB_KERNINST_UTIL = true
+USES_LIB_PARADYN_UTIL = true
+
+TO_KERNINSTD = $(TO_CORE)/kerninstd
+TO_KERNINSTD_IGEN = $(TO_KERNINSTD)/igen
+TO_KPERFMON = $(TO_CORE)/kperfmon
+TO_KAPI = $(TO_CORE)/kerninstapi
+
+SRCS	     += \
+		$(TO_KERNINSTD)/archtraits/src/instr.C \
+		$(TO_KERNINSTD)/archtraits/src/reg.C \
+		$(TO_KERNINSTD)/archtraits/src/reg_set.C \
+		$(TO_KERNINSTD)/basicblock/src/basicblock.C \
+		$(TO_KERNINSTD)/bitutils/src/bitUtils.C \
+		$(TO_KERNINSTD)/bitwise_dataflow_fn/src/bitwise_dataflow_fn.C \
+		$(TO_KERNINSTD)/bitwise_dataflow_fn/src/mbdf_window.C \
+		$(TO_KERNINSTD)/codeObject/src/codeObject.C \
+		$(TO_KERNINSTD)/codeObject/src/basicBlockCodeObjects.C \
+		$(TO_KERNINSTD)/codeObject/src/fnCodeObjects.C \
+		$(TO_KERNINSTD)/emitters/src/tempBufferEmitter.C \
+		$(TO_KERNINSTD)/insnVec/src/insnVec.C \
+		$(TO_KERNINSTD)/function/src/funkshun.C \
+		$(TO_KERNINSTD)/function/src/fnCode.C \
+		$(TO_KERNINSTD)/function/src/simplePath.C \
+		$(TO_KERNINSTD)/function/src/fn_misc.C \
+		$(TO_KERNINSTD)/function/src/fnBlockAndEdgeCounts.C \
+		$(TO_KERNINSTD)/function/src/fnCode.C \
+		$(TO_KERNINSTD)/immediates/src/uimm.C \
+		$(TO_KERNINSTD)/immediates/src/simm.C \
+		$(TO_KERNINSTD)/insnVec/src/insnVec.C \
+		$(TO_KERNINSTD)/interProcRegAnalysis/src/readySet.C \
+		$(TO_KERNINSTD)/loadedModule/src/loadedModule.C \
+		$(TO_KERNINSTD)/kmem/src/kmem.C \
+		$(TO_KERNINSTD)/machineInfo/src/machineInfo.C \
+		$(TO_KERNINSTD)/moduleMgr/src/moduleMgr.C \
+		$(TO_KERNINSTD)/moduleMgr/src/callGraph.C \
+		$(TO_KERNINSTD)/outlining/src/outliningMisc.C \
+		$(TO_KERNINSTD)/outlining/src/outliningLocations.C \
+		$(TO_KERNINSTD)/relocatableCode/src/relocatableCode.C \
+		$(TO_KERNINSTD)/xdr/src/xdr_send_recv_common.C \
+		$(TO_KERNINSTD)/xdr/src/trick_classes.C \
+		$(TO_KERNINSTD)/xdr/src/trick_module.C \
+		$(TO_KERNINSTD_IGEN)/downloadToKernel.C \
+		$(TO_KERNINSTD_IGEN)/parseNewFunction.C \
+		$(TO_KPERFMON)/igen/pendingPeekRequests.C \
+		$(TO_KPERFMON)/igen/pendingMMapRequests.C \
+		$(TO_KPERFMON)/igen/pendingRegAnalysisRequests.C \
+		$(TO_KPERFMON)/instrumenter/src/instrumenter.C \
+		$(TO_KPERFMON)/kperfmon/src/kerninstdClientUser.C \
+		$(TO_KPERFMON)/xdr/src/xdr_send_recv_kperfmon_only.C \
+		$(TO_KAPI)/src/kapi_manager.C \
+		$(TO_KAPI)/src/kapi_module.C \
+		$(TO_KAPI)/src/kapi_function.C \
+		$(TO_KAPI)/src/kapi_basic_block.C \
+		$(TO_KAPI)/src/kapi_point.C \
+		$(TO_KAPI)/src/kapi_snippet.C \
+		$(TO_KAPI)/src/kapi_disass_object.C \
+		$(TO_KAPI)/src/kapi_vector.C \
+		$(TO_KAPI)/src/kapi_templates.C \
+		$(TO_KAPI)/codegen/src/ast.C \
+		$(TO_KAPI)/codegen/src/kludges.C \
+		$(TO_KAPI)/memAllocator/src/memAllocator.C
+
+IGEN_GEN_SRCS = kerninstdClient.xdr.CLNT.C kerninstdClient.xdr.C
+IGEN_ISRCS = $(TO_KERNINSTD_IGEN)/kerninstdClient.I
+
+VPATH	     += $(TO_KERNINSTD_IGEN) \
+		$(TO_KERNINSTD)/archtraits/src \
+		$(TO_KERNINSTD)/basicblock/src \
+		$(TO_KERNINSTD)/bitutils/src \
+		$(TO_KERNINSTD)/bitwise_dataflow_fn/src \
+		$(TO_KERNINSTD)/codeObject/src \
+		$(TO_KERNINSTD)/emitters/src \
+		$(TO_KERNINSTD)/function/src \
+		$(TO_KERNINSTD)/immediates/src \
+		$(TO_KERNINSTD)/insnVec/src \
+		$(TO_KERNINSTD)/interProcRegAnalysis/src \
+		$(TO_KERNINSTD)/kernelDriver/src \
+		$(TO_KERNINSTD)/kmem/src \
+		$(TO_KERNINSTD)/loadedModule/src \
+		$(TO_KERNINSTD)/machineInfo/src \
+		$(TO_KERNINSTD)/moduleMgr/src \
+		$(TO_KERNINSTD)/outlining/src \
+		$(TO_KERNINSTD)/relocatableCode/src \
+		$(TO_KERNINSTD)/simplePathSlice/src \
+		$(TO_KERNINSTD)/usualJump/src \
+		$(TO_KERNINSTD)/xdr/src \
+		$(TO_KERNINSTD)/ABIs/src \
+		$(TO_KPERFMON)/kperfmon/src \
+		$(TO_KPERFMON)/igen \
+		$(TO_KPERFMON)/instrumenter/src \
+		$(TO_KPERFMON)/outliningMgr/src \
+		$(TO_KPERFMON)/traceBuffer/src \
+		$(TO_KPERFMON)/virtualization/src \
+		$(TO_KPERFMON)/xdr/src \
+		$(TO_KAPI)/src \
+		$(TO_KAPI)/codegen/src \
+		$(TO_KAPI)/memAllocator/src
+
+IFLAGS       += -I$(TO_PD_CORE) \
+		-I$(TO_KERNINSTD_IGEN) \
+		-I$(TO_KERNINSTD)/archtraits/src \
+		-I$(TO_KERNINSTD)/basicblock/src \
+		-I$(TO_KERNINSTD)/bitutils/src \
+		-I$(TO_KERNINSTD)/bitwise_dataflow_fn/src \
+		-I$(TO_KERNINSTD)/codeObject/src \
+		-I$(TO_KERNINSTD)/emitters/src \
+		-I$(TO_KERNINSTD)/function/src \
+		-I$(TO_KERNINSTD)/immediates/src \
+		-I$(TO_KERNINSTD)/interProcRegAnalysis/src \
+		-I$(TO_KERNINSTD)/insnVec/src \
+		-I$(TO_KERNINSTD)/kernelDriver/src \
+		-I$(TO_KERNINSTD)/kmem/src \
+		-I$(TO_KERNINSTD)/loadedModule/src \
+		-I$(TO_KERNINSTD)/machineInfo/src \
+		-I$(TO_KERNINSTD)/moduleMgr/src \
+		-I$(TO_KERNINSTD)/outlining/src \
+		-I$(TO_KERNINSTD)/out_streams/src \
+		-I$(TO_KERNINSTD)/relocatableCode/src \
+		-I$(TO_KERNINSTD)/simplePathSlice/src \
+		-I$(TO_KERNINSTD)/usualJump/src \
+		-I$(TO_KERNINSTD)/xdr/src \
+		-I$(TO_KERNINSTD)/ABIs/src \
+		-I$(TO_KPERFMON)/kperfmon/src \
+		-I$(TO_KPERFMON)/igen \
+		-I$(TO_KPERFMON)/instrumenter/src \
+		-I$(TO_KPERFMON)/outliningMgr/src \
+		-I$(TO_KPERFMON)/primitives/src/virtualization/src \
+		-I$(TO_KPERFMON)/traceBuffer/src \
+                -I$(TO_KPERFMON)/virtualization/src \
+		-I$(TO_KPERFMON)/xdr/src \
+		-I$(TO_KAPI)/h \
+		-I$(TO_KAPI)/codegen/src \
+		-I$(TO_KAPI)/memAllocator/src \
+
+all:	$(TARGET) 

@@ -1,0 +1,31 @@
+#!/bin/csh -f
+
+# install script
+
+set MODULE = kerninst
+set KERNEL_DRIVERS_DIR=/usr/kernel/drv
+set LONGDEVICENAME=/devices/pseudo/kerninst@0:kerninst
+set PRETTYDEVICENAME=/dev/kerninst
+
+cp $MODULE $KERNEL_DRIVERS_DIR
+echo copied $MODULE
+if !(-e $KERNEL_DRIVERS_DIR/$MODULE.conf) then
+    cp $MODULE.conf $KERNEL_DRIVERS_DIR
+    echo copied $MODULE.conf
+endif
+echo removing old kerninst driver, if any
+/usr/sbin/rem_drv $MODULE
+
+echo adding new kerninst driver
+/usr/sbin/add_drv $MODULE
+
+# Set up symbolic link
+if !(-e $PRETTYDEVICENAME) then
+	ln -s $LONGDEVICENAME $PRETTYDEVICENAME
+	echo set up link.
+endif
+
+chmod a+rw $LONGDEVICENAME
+chmod a+x $KERNEL_DRIVERS_DIR/$MODULE
+
+echo driver can be found at $PRETTYDEVICENAME

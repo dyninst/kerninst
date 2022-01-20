@@ -1,0 +1,58 @@
+#
+# common definitions for all makefiles
+#
+
+OBJECTS		= $(patsubst %.C, %.o, $(filter %.C,$(notdir $(SRCS)))) \
+		$(patsubst %.c, %.o, $(filter %.c,$(notdir $(SRCS)))) \
+		$(patsubst %.s, %.o, $(filter %.s,$(notdir $(SRCS)))) \
+		$(patsubst %.S, %.o, $(filter %.S,$(notdir $(SRCS))))
+
+default: 	$(MODULE)
+
+$(MODULE):	$(OBJECTS)
+		$(LD) -r -o $@ $(OBJECTS)
+
+clean:
+	/bin/rm -f $(MODULE) *.o *~
+
+install:        $(MODULE)
+	./install_script
+
+PLATFORM        = sun4u
+UTSBASE         = $(SRC)/uts
+
+#
+#       Include common rules.
+#
+
+INCLUDES	+= -I/usr/platform/$(PLATFORM)/include
+INCLUDES        += -I/usr/include/v9 -I$(UTSBASE)/common
+INCLUDES        += -I$(UTSBASE)/sun4u -I$(UTSBASE)/sun 
+INCLUDES        += -I$(UTSBASE)/sparc -I$(UTSBASE)/sfmmu
+
+# We use -mno-app-regs to tell the compiler not to use %g2 through %g4,
+# which are reserved for applications in the SPARC SVR4 ABI.
+
+CFLAGS          = $(ARCHDEFS) -mno-app-regs
+CFLAGS          += -O $(INCLUDES) -D__STDC__=0
+
+ASFLAGS         += -D_ASM -D__STDC__=0
+ASFLAGS         += -P -xarch=$(ARCH)
+
+MACHINE_DEFS    = -D_KERNEL -D$(PLATFORM) -D_MACHDEP -DSFMMU -DMP
+
+CFLAGS		+= $(MACHINE_DEFS) -Wa,-P,-xarch=$(ARCH)
+ASFLAGS		+= $(MACHINE_DEFS)
+
+# the ':=' below is important, since we don't want the -ffreestanding
+# which gets added to CFLAGS after this assignment.
+CXXFLAGS	:= $(CFLAGS)
+
+# -fno-exceptions and -fno-nonansi-builtins help prevent unresolved symbols 
+# that cause the driver to fail to attach 
+CXXFLAGS        += -fno-exceptions -fno-nonansi-builtins
+
+# Don't let gcc use its builtin libc functions, force use of those
+# provided by the solaris kernel
+CFLAGS          += -ffreestanding
+

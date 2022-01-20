@@ -1,0 +1,28 @@
+TARGET	      = test
+
+TO_KERNINSTD = ../../../kerninstd
+
+SRCS	     += \
+		../src/hash_table.c \
+		../src/stacklist.c \
+		../src/compare_and_swap.c \
+		../src/all_vtimers.c \
+		../src/switch_out.c \
+		../src/switch_in.c \
+		../src/main.C
+
+VPATH	     += ../src 
+
+IFLAGS       += -I../src
+
+ASFLAGS		+= -xarch=v8plusa
+
+LIBS 	     += 
+SYSLIBS	     += 
+LDFLAGS	     += 
+
+CFLAGS		+= 
+CXXFLAGS	+= -fguiding-decls
+TFLAGS		+= -fguiding-decls
+		   
+all:	$(TARGET) 

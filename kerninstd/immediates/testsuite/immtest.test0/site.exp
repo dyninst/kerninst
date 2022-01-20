@@ -1,0 +1,15 @@
+# site.exp: should be present for all "runtest" runs
+# Contains config vrbles specific to the tool under test
+
+# Runtest will load these values last, so this file can use or
+# override the "master" (global) site.exp file.
+
+# Note: there may not be a space between the indexes of
+# tcl arrays (i.e., no space after the comma following immtest)
+
+set target_info(immtest,name) "immtest"
+set target_info(immtest0,name) "immtest"
+
+set mailing_list {tamches}
+
+puts stdout "WELCOME to site.exp (local)"

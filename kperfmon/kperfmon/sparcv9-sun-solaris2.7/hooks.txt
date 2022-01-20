@@ -1,0 +1,6 @@
+1 unix idle idleENT entry
+2 unix resume resumeENT entry
+3 unix swtch swtchENT entry
+4 unix syscall_trap32 syscall_apENT entry
+5 genunix kmem_alloc idleENT exit
+6 unix mutex_enter idleENT exit

@@ -1,0 +1,6 @@
+EXPLICIT_DEPENDS = 1
+
+TCLTK_DIR = /p/paradyn/packages/tcl8.4.5
+#Uncomment the following line to build Kerninst with Tcl/Tk 8.3
+# instead of 8.4
+#USE_TCL83      = true

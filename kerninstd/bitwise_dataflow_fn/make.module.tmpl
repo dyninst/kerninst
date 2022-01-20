@@ -1,0 +1,49 @@
+USES_LIB_KERNINST_UTIL = true
+#TO_KERNINSTD = 
+
+TARGET	      = bitwisetest
+
+SRCS	     += ../../bitutils/src/bitUtils.C \
+		../../immediates/src/uimm.C \
+		../../immediates/src/simm.C \
+		../../sparc_instr/src/sparc_instr.C \
+		../../sparc_reg/src/sparc_reg.C \
+		../../x86_reg/src/x86_reg.C \
+		../../sparc_reg_set/src/sparc_reg_set.C \
+		../../sparc_reg_set/src/sparc_fp_regset.C \
+		../../sparc_reg_set/src/sparc_int_regset.C \
+		../../sparc_reg_set/src/sparc_misc_regset.C \
+		../../x86_reg_set/src/x86_reg_set.C \
+		../src/templates.C \
+		../src/main.C
+
+
+IFLAGS	     += -I../src \
+		-I../../bitutils/src \
+		-I../../immediates/src \
+		-I../../archtraits/src \
+		-I../../sparc_reg/src \
+		-I../../x86_reg/src \
+		-I../../sparc_reg_set/src \
+		-I../../x86_reg_set/src \
+		-I../../sparc_instr/src \
+		-I../../insnVec/src
+
+VPATH	     += ../src  ../../bitutils/src ../../immediates/src \
+		../../archtraits/src \
+		../../sparc_reg/src \
+		../../x86_reg/src \
+		../../sparc_instr/src \
+		../../sparc_reg_set/src \
+		../../x86_reg_set/src \
+		../../insnVec/src
+
+LIBS 	     += 
+SYSLIBS	     += -lnsl -lsocket
+
+
+CFLAGS		+=
+CXXFLAGS	+=
+TFLAGS		+=
+		   
+all:	$(TARGET) 

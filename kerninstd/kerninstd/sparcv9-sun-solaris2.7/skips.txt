@@ -1,0 +1,286 @@
+// skips.txt
+// skips file for the solaris 2.7 kernel
+// 3-tuple: first item is:
+//    "a" if we can parse but cannot analyze this function
+//    "pa" if we cannot parse nor analyze this function
+//    (There is no "cannot parse but can analyze" since parsing is needed for analysis)
+
+   {"a", "unix", "syscall_trap_4x"}, // cannot analyze because one branch does a retry
+   // and the other branch calls sys_trap, which has 1 pre-save frame before doing
+   // a 'done'
+   {"a", "unix", "sys_trap"}, // does a save w/o a restore, leading to pre-save
+      // frames of 1, which is somewhat inaccurate since it'll end with a 'done'
+      // anyway.  Anyway, The problem is with doing register analysis on routines
+      // calling sys_trap (merging disagreeing number of pre-save frames).
+
+   {"pa", "unix", "_start"}, // ends by calling main then panic.  Since we don't recognize
+      // that panic doesn't return (actually, main doesn't return either), we keep
+      // parsing junk (the 1st of which just so happens to look like a call insn)
+
+   {"pa", "unix", "vec_interrupt"}, // very unanalyzable jmp
+   {"pa", "unix", "dmv_vector"}, // very unanalyzable jmp
+   {"pa", "unix", "e_ddi_exec_ctlops"}, // unanalyzable jmp
+
+   {"pa", "unix", "fault_64bit_sn0"}, // single ta insn; we don't stop parsing
+   {"pa", "unix", "fault_64bit_sn1"}, // single ta insn; we don't stop parsing
+   {"pa", "unix", "fault_64bit_so0"}, // single ta insn; we don't stop parsing
+   {"pa", "unix", "fault_64bit_so1"}, // single ta insn; we don't stop parsing
+   {"pa", "unix", "fault_64bit_fn0"}, // single ta insn; we don't stop parsing
+   {"pa", "unix", "fault_64bit_fn1"}, // single ta insn; we don't stop parsing
+   {"pa", "unix", "fault_64bit_not"}, // single ta insn; we don't stop parsing
+
+   {"pa", "unix", "self_xcall"}, // jmp to %g5
+   {"pa", "unix", "_fp_read_pfreg"}, // funny interproc jmp
+   {"pa", "unix", "_fp_write_pfreg"}, // funny interproc jmp
+   {"pa", "unix", "_fp_read_pdreg"}, // funny interproc jmp
+   {"pa", "unix", "_fp_write_pdreg"}, // funny interproc jmp
+   {"a", "unix", "debug_flush_windows"}, // infinite loop while doing reg analysis since it
+                                    // does save in a loop
+   {"a", "unix", "flush_user_windows"}, // same
+
+   {"pa", "unix", "thread_start"},
+      // run past end of vec.  Does a call to a register (thread code to run), and if
+      // it ever returns, it calls thread_exit, which definitely never returns.
+      // Unfortunately kerninst don't know this.
+   {"a", "unix", "di_dfs"}, // recursive -- hard to analyze
+
+   {"pa", "unix", "asm_mutex_spin_enter"}, // unanalyzable jmp
+   {"pa", "unix", "asm_mutex_spin_exit"}, // unanalyzable jmp
+
+   {"a", "unix", "rwlock_hword_enter"}, // can't do reg analysis (save then call to panic)
+
+   // note that the krtld versions of these routines are dumb; they don't take advantage
+   // of v9 hardware.  The unix/.div, etc. versions are smart.  Makes me wonder what the
+   // krtld versions exist for in the first place...
+   {"pa", "krtld", ".urem"}, // intra-procedural branch; delay slot is @ start of next fn (.udiv) (!)
+   {"pa", "krtld", ".udiv"}, // interproc branch has a delay slot that falls through to the
+                       // start of .div (!)
+
+   {"pa", "krtld", "exitto"}, // unanalyzable call then suddenly fn ends
+
+   {"a", "genunix", "in_devwalk"}, // recursive -- hard to analyze
+   {"a", "genunix", "ddi_pathname_work"}, // recursive -- hard to analyze
+   {"pa", "genunix", "physio"}, // unanalyzable jmp (the usual ld then jmp)
+
+   {"a", "ufs", "set_state"}, // recursive -- hard to analyze
+
+//   {"a", "leo", "leo_config_dma"}, // recursive routine doesn't recurse to start of routine
+
+// These are perhaps new with 2.6
+// Uncommenting them out allows them to work with purify
+// Commenting them out in this file has the benefit of reminding us (when, on
+// startup, we see an exception being caught) that there are
+// still things left to implement
+
+//   {"pa", "unix", "sfmmu_setctx_sec"}, // ???
+   {"pa", "unix", "dvma_unload"}, // unanalyzable jmpl
+   {"pa", "unix", "dvma_sync"}, // unanalyzable jmpl
+   {"pa", "unix", "abort_sequence_enter"}, // unanalyzable jmpl
+   {"pa", "unix", "kadb_cpu_off"}, // unanalyzable jmpl
+   {"pa", "unix", "kadb_cpu_on"}, // unanalyzable jmpl
+   {"pa", "unix", "kadb_format"}, // unanalyzable jmpl
+   {"pa", "unix", "kadb_arm"}, // unanalyzable jmpl
+   {"pa", "unix", "kstat_q_panic"}, // calls panic; needs to know that panic won't return
+   {"pa", "unix", "ddi_ctlops"}, // triple indirect unanalyzable jmp
+   {"pa", "unix", "ddi_dma_map"}, // unanalyzable jmp
+   {"pa", "unix", "ddi_dma_allochdl"}, // unanalyzable jmp
+   {"pa", "unix", "ddi_dma_freehdl"}, // unanalyzable jmp
+   {"pa", "unix", "ddi_dma_bindhdl"}, // unanalyzable jmp
+   {"pa", "unix", "ddi_dma_unbindhdl"}, // unanalyzable jmp
+   {"pa", "unix", "ddi_dma_flush"}, // unanalyzable jmp
+   {"pa", "unix", "ddi_dma_win"}, // unanalyzable jmp
+   {"pa", "unix", "ddi_dma_sync"}, // unanalyzable jmpl
+   {"pa", "unix", "ddi_dma_unbind_handle"}, // unanalyzable jmpl
+   {"pa", "unix", "ddi_dma_mctl"}, // unanalyzable jmp
+   {"pa", "unix", "prom_montrap"}, // unanalyzable jmpl
+   {"pa", "unix", "parmsget"}, // unanalyzable jmpl
+
+   {"pa", "krtld", "_kobj_boot"}, // intra-procedural call
+      // note: this routine is written entirely in C, so we should be able to handle it.
+      // definitely a candidate for re-checking.  BTW, it's a big routine that may only
+      // be called during boot time, so it's a possible candidate for springboardom.
+      // Unfortunately, cscope can't seem to find who calls this routine.
+      // Has a call to 2 insns below (to get the PC), which we now accept; but then
+      // it does a jump table that we don't know about, so we get an unanalyzable jmpl.
+
+   {"pa", "genunix", "_fp_pack_word"}, // unanalyzable jmpl
+   {"pa", "genunix", "_fp_pack_extword"}, // unanalyzable jmpl
+   {"pa", "genunix", "_fp_unpack_word"}, // unanalyzable jmpl
+   {"pa", "genunix", "_fp_unpack_extword"}, // unanalyzable jmpl
+   {"pa", "genunix", "copyin"}, // unanalyzable jmpl
+   {"pa", "genunix", "xcopyin"}, // unanalyzable jmpl
+   {"pa", "genunix", "copyout"}, // unanalyzable jmpl
+   {"pa", "genunix", "xcopyout"}, // unanalyzable jmpl
+   {"pa", "genunix", "copyinstr"}, // unanalyzable jmpl
+   {"pa", "genunix", "copyoutstr"}, // unanalyzable jmpl
+   {"pa", "genunix", "fuword8"}, // unanalyzable jmpl
+   {"pa", "genunix", "fuiword8"}, // unanalyzable jmpl
+   {"pa", "genunix", "fuword16"}, // unanalyzable jmpl
+   {"pa", "genunix", "fuword32"}, // unanalyzable jmpl
+   {"pa", "genunix", "fuiword32"}, // unanalyzable jmpl
+   {"pa", "genunix", "fulword"}, // unanalyzable jmpl
+   {"pa", "genunix", "fuword64"}, // unanalyzable jmpl
+   {"pa", "genunix", "subyte"}, // unanalyzable jmpl
+   {"pa", "genunix", "suword8"}, // unanalyzable jmpl
+   {"pa", "genunix", "suiword8"}, // unanalyzable jmpl
+   {"pa", "genunix", "suword16"}, // unanalyzable jmpl
+   {"pa", "genunix", "suword32"}, // unanalyzable jmpl
+   {"pa", "genunix", "suiword32"}, // unanalyzable jmpl
+   {"pa", "genunix", "sulword"}, // unanalyzable jmpl
+   {"pa", "genunix", "suword64"}, // unanalyzable jmpl
+
+   {"pa", "genunix", "csx_RegisterClient"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_DeregisterClient"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_GetStatus"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_SetEventMask"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_GetEventMask"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_RequestIO"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_ReleaseIO"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_RequestIRQ"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_ReleaseIRQ"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_RequestWindow"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_ReleaseWindow"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_ModifyWindow"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_MapMemPage"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_RequestSocketMask"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_ReleaseSocketMask"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_RequestConfiguration"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_ModifyConfiguration"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_ReleaseConfiguration"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_AccessConfigurationRegister"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_GetFirstTuple"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_GetNextTuple"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_GetTupleData"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_MapLogSocket"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_ValidateCIS"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_MakeDeviceNode"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_RemoveDeviceNode"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_ConvertSpeed"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_ConvertSize"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Event2Text"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Error2Text"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_CS_DDI_Info"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_CS_Sys_Ctl"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_GetClientInfo"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_GetFirstClient"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_GetNextClient"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_ResetFunction"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_GetCardServicesInfo"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_GetConfigurationInfo"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_GetPhysicalAdapterInfo"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_CONFIG"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_DEVICE"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_DEVICE_A"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_DEVICE_OA"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_DEVICE_OC"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_VERS_1"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_VERS_2"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_JEDEC_A"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_JEDEC_C"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_FORMAT"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_FORMAT_A"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_GEOMETRY"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_BYTEORDER"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_DATE"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_BATTERY"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_ORG"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_MANFID"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_FUNCID"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_FUNCE"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_CFTABLE_ENTRY"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_LINKTARGET"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_LONGLINK_A"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_LONGLINK_C"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_LONGLINK_MFC"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_LONGLINK_CB"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_SPCL"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_SWIL"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_BAR"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_DEVICEGEO"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_Parse_CISTPL_DEVICEGEO_A"}, // unanalyzable jmpl
+   {"pa", "genunix", "csx_ParseTuple"}, // unanalyzable jmpl
+   {"pa", "genunix", "dev_open"}, // unanalyzable jmpl
+   {"pa", "genunix", "dev_close"}, // unanalyzable jmpl
+   {"pa", "genunix", "bdev_print"}, // unanalyzable jmpl
+   {"pa", "genunix", "bdev_dump"}, // unanalyzable jmpl
+   {"pa", "genunix", "cdev_read"}, // unanalyzable jmpl
+   {"pa", "genunix", "cdev_write"}, // unanalyzable jmpl
+   {"pa", "genunix", "cdev_ioctl"}, // unanalyzable jmpl
+   {"pa", "genunix", "cdev_mmap"}, // unanalyzable jmpl (no ld's, just mov's)
+
+   {"pa", "genunix", "siginfofree"}, // unanalyzable jmpl
+
+   {"pa", "genunix", "ddi_dev_is_needed"}, // unanalyzable jmpl
+   {"pa", "genunix", "ddi_ring_console_bell"}, // unanalyzable jmpl
+   {"pa", "genunix", "ddi_prop_free"}, // unanalyzable jmpl
+
+   {"pa", "genunix", "ndi_post_event"}, // unanalyzable jmpl
+   {"pa", "genunix", "ndi_busop_remove_eventcall"}, // unanalyzable jmpl
+   {"pa", "genunix", "ndi_busop_add_eventcall"}, // unanalyzable jmpl
+   {"pa", "genunix", "ndi_busop_get_eventcookie"}, // unanalyzable jmpl
+
+   {"pa", "genunix", "seg_unmap"}, // unanalyzable jmpl
+
+   {"pa", "SUNW,UltraSPARC", "ce_err"}, // unanalyzable jmpl
+   {"pa", "SUNW,UltraSPARC", "async_err"}, // unanalyzable jmpl
+   {"pa", "SUNW,UltraSPARC", "dis_err_panic1"}, // unanalyzable jmpl
+
+   {"pa", "SUNW,UltraSPARC-IIi", "ce_err"}, // unanalyzable jmpl
+   {"pa", "SUNW,UltraSPARC-IIi", "async_err"}, // unanalyzable jmpl
+   {"pa", "SUNW,UltraSPARC-IIi", "dis_err_panic1"}, // unanalyzable jmpl
+   {"pa", "SUNW,UltraSPARC-IIi", "kstat_q_panic"}, // calls panic; needs to know that panic won't return
+   {"pa", "specfs", "spec_access"}, // unanalyzable jmpl
+   {"pa", "specfs", "spec_fid"}, // unanalyzable jmpl
+
+   {"pa", "rpcmod", "rmm_rput"}, // unanalyzable jmpl
+   {"pa", "rpcmod", "rmm_rsrv"}, // unanalyzable jmpl
+   {"pa", "rpcmod", "rmm_wput"}, // unanalyzable jmpl
+   {"pa", "rpcmod", "rmm_wsrv"}, // unanalyzable jmpl
+   {"pa", "rpcmod", "rmm_close"}, // unanalyzable jmpl
+   {"pa", "rpcmod", "clnt_cots_kfreeres"}, // unanalyzable jmpl
+   {"pa", "rpcmod", "clnt_clts_kfreeres"}, // unanalyzable jmpl
+   {"pa", "rpcmod", "xdr_replymsg_body"}, // unanalyzable jmpl
+   {"pa", "rpcmod", "svc_clts_kgetargs"}, // unanalyzable jmpl
+   {"pa", "rpcmod", "svc_cots_kgetargs"}, // unanalyzable jmpl
+
+   {"pa", "rpcmod", "xdr_int"}, // unanalyzable jmpl
+   {"pa", "rpcmod", "xdr_u_int"}, // unanalyzable jmpl
+//   {"pa", "rpcmod", "xdr_long"}, // unanalyzable jmpl
+//   {"pa", "rpcmod", "xdr_u_long"}, // unanalyzable jmpl
+
+   {"pa", "scsi", "scsi_ifgetcap"}, // unanalyzable jmpl
+   {"pa", "scsi", "scsi_ifsetcap"}, // unanalyzable jmpl
+   {"pa", "scsi", "scsi_abort"}, // unanalyzable jmpl
+   {"pa", "scsi", "scsi_reset"}, // unanalyzable jmpl
+   {"pa", "scsi", "scsi_reset_notify"}, // unanalyzable jmpl
+   {"pa", "scsi", "scsi_clear_task_set"}, // unanalyzable jmpl
+   {"pa", "scsi", "scsi_terminate_task"}, // unanalyzable jmpl
+   {"pa", "scsi", "scsi_clear_aca"}, // unanalyzable jmpl
+   {"pa", "scsi", "scsi_probe"}, // unanalyzable jmpl
+
+   {"pa", "uata", "atapi_complete"}, // unanalyzable jmpl
+   {"pa", "uata", "ata_disk_complete"}, // unanalyzable jmpl
+
+   {"pa", "sockfs", "sock_access"}, // unanalyzable jmpl
+
+   {"pa", "arp", "ar_cmd_dispatch"}, // unanalyzable jmpl
+
+   {"pa", "fifofs", "fifo_access"}, // unanalyzable jmpl
+   {"pa", "fifofs", "fifo_fid"}, // unanalyzable jmpl
+
+   {"pa", "diaudio", "audio_pause_play"}, // unanalyzable jmpl
+
+   {"pa", "fd", "fd_fastintr"}, // unanalyzable jmpl (doesn't throw away link)
+
+   {"pa", "dada", "dcd_abort"}, // unanalyzable jmpl
+   {"pa", "dada", "dcd_reset"}, // unanalyzable jmpl
+   {"pa", "dada", "dcd_probe"}, // unanalyzable jmpl
+
+   {"pa", "seg_drv", "segdrv_getvp"}, // unanalyzable jmpl
+   {"pa", "seg_drv", "segdrv_getmemid"}, // unanalyzable jmpl
+
+   // The following 3 fns do 2 register moves and then jmp to another in register
+   // Certainly these are tail calls.
+   {"pa", "rpcsec", "svc_authany_wrap"}, // unanalyzable jmpl
+   {"pa", "rpcsec", "authany_wrap"}, // unanalyzable jmpl
+   {"pa", "rpcsec", "authany_unwrap"}, // unanalyzable jmpl

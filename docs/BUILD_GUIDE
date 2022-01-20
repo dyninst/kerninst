@@ -1,0 +1,204 @@
+HOW TO BUILD KERNINST 2.1.1
+---------------------------
+
+1. Environment Setup
+
+The first step in building the KernInst Tool Suite is to download the
+source distribution and unpack it. If you are reading this, we assume you have
+successfully accomplished this task. If you obtained this file elsewhere,
+please visit the KernInst web site at http://www.paradyn.org/html/kerninst.html
+for details on getting a source distribution.
+
+1.1 Environment Variables
+
+    The following shell environment variables need to be set in order to 
+    build the KernInst Tool Suite.
+
+    PLATFORM - denotes the machine architecture and operating system version
+             - For IA-32/Linux 2.4.x, set to "i386-unknown-linux2.4"
+             - For IA-32/Linux 2.6.x, set to "i386-unknown-linux2.6"
+             - For SPARC/Solaris, set to "sparc-sun-solaris2.7" (regardless
+               of whether the machine is actually running Solaris8)
+             - For PowerPC/Linux 2.4.x, set to "ppc64-unknown-linux2.4"
+
+1.2 Makefile Configuration
+
+    Unless your site is set-up identically to that of the Paradyn/KernInst
+    developers, you should carefully examine and update the 
+    (GNU)make configuration parameters defined in the config files 
+    (make.* in the top level directory - used for building Kerninst
+    compnents, make.config.local in the core subdirectory - used in 
+    building Paradyn components), particularly utilities such as the 
+    C/C++ compilers, perl, flex and bison, and the installed locations
+    and names for TCL/TK and X11.
+
+2. Building KernInst
+
+There are strict relationships between the order in which various components
+must be built. Instead of providing a dependency graph, we'll just supply an
+order in which you should build the components to avoid difficulties. By 
+performing the actions in the following subsections in order, you should 
+have no difficulty building KernInst.
+
+We also provide a script named 'build_kerninst_binaries' in the scripts
+directory that can be used to perform the following steps automatically.
+However, we suggest you build manually at least once to become familiar
+with the process.
+
+2.1 Building the Paradyn Support Components
+
+There are two components shared with the Paradyn project used to build
+KernInst. These are the "igen" RPC-interface generator and the pdutil 
+library. Instructions on building each component follow.
+
+NOTE: In order to build the Paradyn components for SPARC/Solaris, you will
+      need to temporarily redefine the PLATFORM environment variable to be
+      "sparc-sun-solaris2.8", and then reset it to "sparc-sun-solaris2.7"
+      when finished building the components. Similarly for IA-32/Linux 2.6,
+      redefine PLATFORM to "i386-unknown-linux2.4" while building the
+      Paradyn components, and reset to "i386-unknown-linux2.4" afterwards.
+
+2.1.1 Igen RPC-Interface Generator
+
+        cd core/igen/$PLATFORM
+        make
+        cd ../../..
+
+      Since igen is needed to build some of the other components, it must 
+      be in the path. You can accomplish this by setting the environment 
+      variable PATH to include "path-to-kerninst/core/igen/$PLATFORM".
+
+2.1.2 Pdutil Library
+
+        cd core/pdutil/$PLATFORM
+        make
+        cd ../../..
+
+2.2 Building the KernInst util Library
+
+        cd util/$PLATFORM
+        make
+        cd ../..
+
+2.3 Building the KernInst daemon (kerninstd)
+
+    64-bit Solaris NOTE: If you wish to build the 64-bit version of 
+    kerninstd, substitute 'sparcv9-sun-solaris2.7' for $PLATFORM below.
+
+        cd kerninstd/kerninstd/$PLATFORM
+        make
+        cd ../../..
+
+2.4 Building the KerninstAPI library and example programs
+
+        cd kerninstapi/$PLATFORM
+        make
+        cd ../examples/$PLATFORM
+        make
+        cd ../..
+
+2.5 Building the KernInst Performance Monitor (kperfmon)
+
+    64-bit Solaris NOTE: If you wish to build the 64-bit version of 
+    kperfmon, substitute 'sparcv9-sun-solaris2.7' for $PLATFORM below.
+
+        cd kperfmon/kperfmon/$PLATFORM
+        make
+        cd ../../..
+
+2.6 Building the KernInst driver (/dev/kerninst)
+
+Due to incompatibilities between operating system support for runtime-loadable
+kernel drivers, there are two independent directories, one for Linux and one
+for Solaris, to contain the source code and build structure for the KernInst
+driver. The Solaris driver resides in the 'kerninstdriver' directory, while
+the Linux driver can be found in 'kerninstdriver-linux'. See the appropriate
+subsection to build the driver for your platform.
+
+2.6.1 Building the Solaris driver
+
+      In order to build the Solaris driver, you will need to have read access 
+      to the Solaris source code and know its location on your machine. You 
+      will then need to edit the file 'Makefile' in the appropriate build 
+      directory and set the 'SRC' variable to the path of the source code. 
+
+      To determine which build directory you should use, run the commands 
+      'uname -r' and 'isainfo' on your Solaris machine. The 'uname' output 
+      should be "5.7" or "5.8", indicating Solaris 7 or 8 respectively. The 
+      corresponding build directories are indicated by a '2.7' or '2.8' 
+      postfix. If the 'isainfo' output contains "sparcv9", you should use the 
+      'sparcv9'-prefixed directory for your version of Solaris, otherwise 
+      use the 'sparc'-prefixed directory. For example, if you have Solaris 8 
+      with a sparcv9 processor, you should build the driver in 
+      'sparcv9-sun-solaris2.8'.
+
+      Once the build directory has been identified, issue the following 
+      commands to build the driver.
+
+          cd kerninstdriver/<build directory>
+          make
+
+      If you wish to install the driver at the present time, issue the 
+      following command as the root user, checking the output for errors.
+
+          make install
+
+2.6.2 Building the Linux driver
+
+      In order to build the Linux driver, you will need to have read access 
+      to the Linux source code and know its location on your machine. You 
+      will then need to edit the file 'Makefile' in the appropriate build 
+      directory to set the following variables based on your enviroment.
+
+          Linux 2.4.x Makefile Variables:
+          -------------------------------
+
+          MODULES_INCLUDE - set to the path to the include files for loadable
+                            kernel modules 
+                            (default is 
+                             '/lib/modules/<kernel version>/build/include')
+          KERNEL_DIR      - set to the path to your Linux source code
+                            (default is '/usr/src/linux-2.4')
+          KERNEL_CONFIG   - set to the path to the kernel configuration file
+                            (default is '/boot/config-<kernel version>')
+
+
+          Linux 2.6.x Makefile Variables:
+          -------------------------------
+
+          KERNEL_SOURCE   - set to the path to the Linux source used to build
+                            the running kernel (default is
+                            '/lib/modules/<kernel version>/build')
+
+      NOTE: On Power, you will need to set these variables in both
+            the kernel driver makefile and the kerninstmalloc driver
+	    makefile.
+
+      After editing the 'Makefile', issue the following commands to build
+      the driver.
+
+      On IA-32/Linux:
+
+          cd kerninstdriver-linux/$PLATFORM
+          make
+
+      On Power/Linux (preferably as root):
+
+          cd kerninstdriver-linux/$PLATFORM
+          ./install_script -makeonly
+
+      Note: If you encounter errors in the build process for the Linux 2.4.x
+            driver referring to a missing 'kallsyms.h' file, you probably 
+            need to download the latest modutils source distribution, 
+            available from:
+ 
+            http://www.kernel.org/pub/linux/utils/kernel/modutils/ 
+
+            Then, edit 'Makefile' to set KALLSYMS_INCLUDE to include the path
+            of the 'include' directory in the modutils-<version> directory.
+      
+
+      If you wish to install the driver at the present time, issue the 
+      following command as the root user, checking the output for errors.
+
+          make install

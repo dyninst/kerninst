@@ -1,0 +1,161 @@
+TARGET	     = kerninstd
+
+USES_LIB_KERNINST_UTIL = true
+USES_LIB_PARADYN_UTIL = true
+
+TO_KERNINSTD = $(TO_CORE)/kerninstd
+
+SRCS	     += \
+		$(TO_KERNINSTD)/archtraits/src/instr.C \
+		$(TO_KERNINSTD)/archtraits/src/reg.C \
+		$(TO_KERNINSTD)/archtraits/src/reg_set.C \
+		$(TO_KERNINSTD)/basicblock/src/basicblock.C \
+		$(TO_KERNINSTD)/bitutils/src/bitUtils.C \
+		$(TO_KERNINSTD)/bitwise_dataflow_fn/src/bitwise_dataflow_fn.C \
+		$(TO_KERNINSTD)/bitwise_dataflow_fn/src/mbdf_window.C \
+		$(TO_KERNINSTD)/clientConn/src/clientConn.C \
+		$(TO_KERNINSTD)/codeObject/src/basicBlockCodeObjects.C \
+		$(TO_KERNINSTD)/codeObject/src/codeObject.C \
+		$(TO_KERNINSTD)/codeObject/src/codeObjectCreationOracle.C \
+		$(TO_KERNINSTD)/codeObject/src/fnCodeObjects.C \
+		$(TO_KERNINSTD)/codeSnippet/src/codeSnippet.C \
+		$(TO_KERNINSTD)/emitters/src/directToMemoryEmitter.C \
+		$(TO_KERNINSTD)/emitters/src/tempBufferEmitter.C \
+		$(TO_KERNINSTD)/function/src/simplePath.C \
+		$(TO_KERNINSTD)/function/src/cfgCreationOracle.C \
+		$(TO_KERNINSTD)/function/src/funkshun.C \
+		$(TO_KERNINSTD)/function/src/fn_misc.C \
+		$(TO_KERNINSTD)/function/src/fnCode.C \
+		$(TO_KERNINSTD)/function/src/fnBlockAndEdgeCounts.C \
+		$(TO_KERNINSTD)/function/src/parseOracle.C \
+		$(TO_KERNINSTD)/igen/downloadToKernel.C \
+		$(TO_KERNINSTD)/igen/parseNewFunction.C \
+		$(TO_KERNINSTD)/immediates/src/uimm.C \
+		$(TO_KERNINSTD)/immediates/src/simm.C \
+		$(TO_KERNINSTD)/insnVec/src/insnVec.C \
+		$(TO_KERNINSTD)/instrumentationMgr/src/instrumentationMgr.C \
+		$(TO_KERNINSTD)/interProcRegAnalysis/src/readySet.C \
+		$(TO_KERNINSTD)/kernelDriver/src/kernelDriver.C \
+		$(TO_KERNINSTD)/kerninstd/src/driver.C \
+		$(TO_KERNINSTD)/kerninstd/src/skips.C \
+		$(TO_KERNINSTD)/kerninstd/src/fillin.C \
+		$(TO_KERNINSTD)/kerninstd/src/kerninstdClient.C \
+		$(TO_KERNINSTD)/kerninstd/src/loop.C \
+		$(TO_KERNINSTD)/kerninstd/src/main.C \
+		$(TO_KERNINSTD)/kerninstd/src/presentSampleData.C \
+		$(TO_KERNINSTD)/kerninstd/src/templates.C \
+		$(TO_KERNINSTD)/kmem/src/kmem.C \
+		$(TO_KERNINSTD)/launchSite/src/launchSite.C \
+		$(TO_KERNINSTD)/loadedModule/src/loadedModule.C \
+		$(TO_KERNINSTD)/machineInfo/src/machineInfo.C \
+		$(TO_KERNINSTD)/mappedKernelSymbols/src/mappedKernelSymbols.C \
+		$(TO_KERNINSTD)/moduleMgr/src/moduleMgr.C \
+		$(TO_KERNINSTD)/moduleMgr/src/regAnalysisOracles.C \
+		$(TO_KERNINSTD)/moduleMgr/src/callGraph.C \
+		$(TO_KERNINSTD)/outlining/src/outliningLocations.C \
+		$(TO_KERNINSTD)/outlining/src/outliningMisc.C \
+		$(TO_KERNINSTD)/patchHeap/src/patchHeap.C \
+		$(TO_KERNINSTD)/patchHeap/src/patchHeap1Size.C \
+		$(TO_KERNINSTD)/relocatableCode/src/relocatableCode.C \
+		$(TO_KERNINSTD)/relocatableCode/src/kernelResolver.C \
+		$(TO_KERNINSTD)/relocatableCode/src/kerninstdResolver.C \
+		$(TO_KERNINSTD)/replaceFunction/src/replaceFunction.C \
+                $(TO_KERNINSTD)/replaceFunction/src/replaceFunctionCall.C \
+		$(TO_KERNINSTD)/RTSymtab/src/RTSymtab.C \
+		$(TO_KERNINSTD)/simplePathSlice/src/simplePathSlice.C \
+		$(TO_KERNINSTD)/springboard/src/springboardChunk.C \
+		$(TO_KERNINSTD)/springboard/src/SpringBoardHeap.C \
+		$(TO_KERNINSTD)/xdr/src/trick_module.C \
+		$(TO_KERNINSTD)/xdr/src/trick_classes.C \
+		$(TO_KERNINSTD)/xdr/src/xdr_send_recv_common.C \
+                $(TO_KERNINSTD)/xdr/src/xdr_send_recv_kerninstd_only.C
+		
+IGEN_GEN_SRCS = kerninstdClient.xdr.SRVR.C kerninstdClient.xdr.C
+IGEN_ISRCS = kerninstdClient.I
+
+VPATH	     += \
+		$(TO_KERNINSTD)/kerninstd/src \
+		$(TO_KERNINSTD)/ABIs/src \
+		$(TO_KERNINSTD)/archtraits/src \
+		$(TO_KERNINSTD)/basicblock/src \
+		$(TO_KERNINSTD)/bitwise_dataflow_fn/src \
+		$(TO_KERNINSTD)/bitutils/src \
+		$(TO_KERNINSTD)/clientConn/src \
+		$(TO_KERNINSTD)/codeObject/src \
+		$(TO_KERNINSTD)/codeSnippet/src \
+		$(TO_KERNINSTD)/cpcInterface/src \
+		$(TO_KERNINSTD)/emitters/src \
+		$(TO_KERNINSTD)/function/src \
+		$(TO_KERNINSTD)/igen \
+		$(TO_KERNINSTD)/immediates/src \
+		$(TO_KERNINSTD)/insnVec/src \
+		$(TO_KERNINSTD)/instrumentationMgr/src \
+		$(TO_KERNINSTD)/interProcRegAnalysis/src \
+		$(TO_KERNINSTD)/kernelDriver/src \
+		$(TO_KERNINSTD)/kmem/src \
+		$(TO_KERNINSTD)/launchSite/src \
+		$(TO_KERNINSTD)/loadedModule/src \
+		$(TO_KERNINSTD)/LRAndR/src \
+		$(TO_KERNINSTD)/machineInfo/src \
+		$(TO_KERNINSTD)/mappedKernelSymbols/src \
+		$(TO_KERNINSTD)/moduleMgr/src \
+		$(TO_KERNINSTD)/outlining/src \
+		$(TO_KERNINSTD)/out_streams/src \
+		$(TO_KERNINSTD)/patchHeap/src \
+		$(TO_KERNINSTD)/predicates/src \
+		$(TO_KERNINSTD)/primitives/src \
+		$(TO_KERNINSTD)/relocatableCode/src \
+		$(TO_KERNINSTD)/replaceFunction/src \
+		$(TO_KERNINSTD)/RTSymtab/src \
+		$(TO_KERNINSTD)/symbolTable/src \
+		$(TO_KERNINSTD)/simplePathSlice/src \
+		$(TO_KERNINSTD)/springboard/src \
+		$(TO_KERNINSTD)/usualJump/src \
+		$(TO_KERNINSTD)/xdr/src
+
+IFLAGS       += -I$(TO_PD_CORE)\
+		-I$(TO_KERNINSTD)/ABIs/src \
+		-I$(TO_KERNINSTD)/archtraits/src \
+		-I$(TO_KERNINSTD)/basicblock/src \
+		-I$(TO_KERNINSTD)/bitutils/src \
+		-I$(TO_KERNINSTD)/bitwise_dataflow_fn/src \
+		-I$(TO_KERNINSTD)/clientConn/src \
+		-I$(TO_KERNINSTD)/codeObject/src \
+		-I$(TO_KERNINSTD)/codeSnippet/src \
+		-I$(TO_KERNINSTD)/cpcInterface/src \
+		-I$(TO_KERNINSTD)/emitters/src \
+		-I$(TO_KERNINSTD)/function/src \
+		-I$(TO_KERNINSTD)/igen \
+		-I$(TO_KERNINSTD)/immediates/src \
+		-I$(TO_KERNINSTD)/insnVec/src \
+		-I$(TO_KERNINSTD)/instrumentationMgr/src \
+		-I$(TO_KERNINSTD)/interProcRegAnalysis/src \
+		-I$(TO_KERNINSTD)/kernelDriver/src \
+		-I$(TO_KERNINSTD)/kerninstd/src \
+		-I$(TO_KERNINSTD)/kmem/src \
+		-I$(TO_KERNINSTD)/launchSite/src \
+		-I$(TO_KERNINSTD)/loadedModule/src \
+		-I$(TO_KERNINSTD)/LRAndR/src \
+		-I$(TO_KERNINSTD)/mappedKernelSymbols/src \
+		-I$(TO_KERNINSTD)/machineInfo/src \
+		-I$(TO_KERNINSTD)/moduleMgr/src \
+		-I$(TO_KERNINSTD)/outlining/src \
+		-I$(TO_KERNINSTD)/out_streams/src \
+		-I$(TO_KERNINSTD)/patchHeap/src \
+		-I$(TO_KERNINSTD)/predicates/src \
+		-I$(TO_KERNINSTD)/primitives/src \
+		-I$(TO_KERNINSTD)/relocatableCode/src \
+		-I$(TO_KERNINSTD)/replaceFunction/src \
+		-I$(TO_KERNINSTD)/RTSymtab/src \
+		-I$(TO_KERNINSTD)/simplePathSlice/src \
+		-I$(TO_KERNINSTD)/springboard/src \
+	        -I$(TO_KERNINSTD)/symbolTable/src \
+		-I$(TO_KERNINSTD)/usualJump/src \
+		-I$(TO_KERNINSTD)/xdr/src
+
+SYSLIBS	     += $(ELF_LIB) -lnsl -ldl
+
+CFLAGS	     += -D_KERNINSTD_
+CXXFLAGS     += -D_KERNINSTD_
+		   
+all:	$(TARGET) 

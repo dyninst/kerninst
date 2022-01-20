@@ -1,0 +1,1055 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+  <title>Kerninst API Reference Guide</title>
+  <meta http-equiv="content-type"
+ content="text/html; charset=ISO-8859-1">
+</head>
+<body>
+<h1>Kerninst API Reference Guide</h1>
+
+<ol>
+   <li> <a href="#Introduction">Introduction</a> </li>
+   <li> <a href="#Interface">Interface Reference</a>
+      <ul>
+         <li><a href="#Class_kapi_manager">Class kapi_manager</a>
+            <ul>
+               <li><a href="#Init_Cleanup">Initialization/Cleanup</a></li>
+               <li><a href="#Memory_Ops">Operations on Kernel Memory</a></li>
+               <li><a href="#Code_Structure_Ops">Operations on Kernel Code Structures</a></li>
+               <li><a href="#Instrumentation_Methods">Instrumentation-related Methods</a></li>
+               <li><a href="#Data_Sampling">Data Sampling</a></li>
+               <li><a href="#Handling_API_Events">Handling API Events</a></li>
+               <li><a href="#Handling_Indirect_Calls">Handling Indirect Calls</a></li>
+               <li><a href="#Function_Replacement">Support for Function Replacement</a></li>
+               <li><a href="#Disass_Support">Support for Disassembly</a></li>
+               <li><a href="#Register_Analysis">Support for Register Analysis</a></li>
+               <li><a href="#VTimer_Support">Support for Virtualized Timers</a></li>
+            </ul>
+         </li>
+	 <li><a href="#Class_kapi_module">Class kapi_module</a></li>
+	 <li><a href="#Class_kapi_function">Class kapi_function</a></li>
+	 <li><a href="#Class_kapi_basic_block">Class kapi_basic_block</a></li>
+	 <li><a href="#Class_kapi_point">Class kapi_point</a></li>
+	 <li><a href="#Class_kapi_snippet">Class kapi_snippet & derived classes</a>
+            <ul>
+               <li><a href="#Class_kapi_const_expr">kapi_const_expr</a></li>
+               <li><a href="#Class_kapi_int_variable">kapi_int_variable</a></li>
+               <li><a href="#Class_kapi_arith_expr">kapi_arith_expr</a></li>
+               <li><a href="#Class_kapi_sequence_expr">kapi_sequence_expr</a></li>
+               <li><a href="#Class_kapi_bool_expr">kapi_bool_expr</a></li>
+               <li><a href="#Class_kapi_if_expr">kapi_if_expr</a></li>
+               <li><a href="#Class_kapi_param_expr">kapi_param_expr</a></li>
+               <li><a href="#Class_kapi_retval_expr">kapi_retval_expr</a></li>
+               <li><a href="#Class_kapi_call_expr">kapi_call_expr</a></li>
+               <li><a href="#Class_kapi_ret_expr">kapi_ret_expr</a></li>
+               <li><a href="#Class_kapi_hwcounter_expr">kapi_hwcounter_expr</a></li>
+               <li><a href="#Class_kapi_cpuid_expr">kapi_cpuid_expr</a></li>
+               <li><a href="#Class_kapi_pid_expr">kapi_pid_expr</a></li>
+            </ul>
+         </li>
+	 <li><a href="#Class_kapi_vector">Class kapi_vector</a></li>
+	 <li><a href="#Class_kapi_hwcounter_set">Class kapi_hwcounter_set</a></li>
+	 <li><a href="#Class_kapi_disass_object">Class kapi_disass_object</a></li>
+	 <li><a href="#Class_kapi_disass_chunk">Class kapi_disass_chunk</a></li>
+	 <li><a href="#Class_kapi_disass_insn">Class kapi_disass_insn</a></li>
+	    
+      </ul>
+   </li>
+</ol>
+
+<a name="Introduction"></a><h2>1. Introduction</h2>
+
+<p>
+This document describes the Kerninst Application Programming Interface (KAPI), 
+which allows a programmer to build tools for modifying an OS kernel on the 
+fly. There are many reasons why you may want to do this, for example: 
+performance profiling (inject timers at selected locations in the kernel), 
+tracing (insert calls to tracing routines anywhere you want), dynamic code 
+optimization (replace a function with a better-optimized version on 
+the fly).
+</p>
+
+<p>The KAPI is provided as a collection of C++ classes, described
+in the next section, and 
+represented by two files. The first file is a C++ header, "kapi.h", that 
+defines the 
+interface available to the mutators. The second file is a C++ library, 
+libkerninstapi.a, that contains the implementation of the interface. 
+Typically, mutators will '<code>#include "kapi.h"</code>' and link against 
+libkerninstapi.a.
+</p>
+
+<p>If you are looking for an introduction to usage of the KAPI, 
+please refer to the Kerninst API Programming Guide, which provides an 
+overview of the system and usage examples. 
+</p>
+
+<a name="Interface"></a><h2>2. Interface Reference</h2>
+
+<p>As mentioned above, the KAPI is structured as a collection of C++ classes. 
+Many of these classes directly correspond to the major instrumentation 
+abstractions: kernel modules, functions, basic blocks, instrumentation 
+points, code expressions, kernel memory regions. 
+Naturally, they allow the programmer to query and manipulate the 
+corresponding objects.</p>
+
+<p>Most methods of KAPI classes are synchronous -- they wait for the 
+requested action to complete. However, there are a few methods that are 
+asynchronous: they initiate an operation 
+and return to the caller immediately. Later on, the caller will be 
+notified of a completion event via a callback. To support the callback 
+functionality, every instrumentation tool has 
+to handle KAPI events periodically. There are several ways this 
+functionality can be integrated in the mutator. 
+See <a href="#Handling_API_Events">"Handling API Events"</a> for 
+details.</p>
+
+<p>As a general rule, each method that can fail returns an error code 
+of the ierr integer type. Zero corresponds to successful completion, 
+while negative values represent various error codes. Below 
+we describe the interface of each API class. Refer to the API header, 
+"kapi.h", for further details.</p>
+
+<a name="Class_kapi_manager"></a><h3>2.1 Class kapi_manager</h3>
+<p>Kapi_manager is the main class in the hierarchy. It is the entry 
+point for most instrumentation activities: allocating/freeing kernel 
+memory, copying to and from kernel 
+memory, browsing through kernel code (locating modules and functions), 
+instrumenting/de-instrumenting, handling instrumentation events, 
+dispatching callbacks.</p>
+
+
+<a name="Init_Cleanup"></a><h4>2.1.1 Initialization/Cleanup</h4>
+<code>kapi_manager()</code><br>
+<p style="margin-left: 20px;">Constructs an uninitialized instance of 
+kapi_manager. Call attach() on this instance to initialize it.</p>
+
+<code>ierr attach(const char *machine, unsigned port);</code><br>
+<p style="margin-left: 20px;">This method attaches kapi_manager to the 
+kernel on the specified <code>machine</code> and <code>port</code> number. 
+All KAPI actions should be carried out only after this method has been
+called on the global kapi_manager.</p>
+
+
+<code>ierr detach();</code><br>
+<p style="margin-left: 20px;">This method will detach from the kernel, 
+remove remaining instrumentation and perform other clean-up tasks. 
+Typically, it is called on exit from a tool.</p>
+
+<a name="Memory_Ops"></a><h4>2.1.2 Operations on Kernel Memory</h4>
+
+<code>kptr_t malloc(unsigned nbytes);</code><br>
+<p style="margin-left: 20px;">Allocate a region of kernel memory of 
+<code>nbytes</code> bytes. Returns the starting address (integer) of the 
+region on success, or zero if allocation fails.</p>
+
+<code>ierr free(kptr_t addr);</code><br>
+<p style="margin-left: 20px;">Free the region starting at <code>addr</code>, 
+which should have been previously returned by 
+<code>kapi_manager::malloc()</code>. 
+Returns an error code if the free request fails.</p>
+
+<code>ierr memcopy(kptr_t from_addr, void *to_addr, unsigned nbytes);</code>
+<br>
+<p style="margin-left: 20px;">Copy <code>nbytes</code> bytes from the kernel 
+space starting at address <code>from_addr</code>, into the user-level buffer 
+specified by <code>to_addr</code>.</p>
+
+<code>ierr memcopy(void *from_addr, kptr_t to_addr, unsigned nbytes);</code>
+<br>
+<p style="margin-left: 20px;">Copy data in the opposite direction (from 
+user to the kernel). Notice the difference in types for kernel and user 
+addresses: kernel addresses are integers, user addresses are pointers.</p>
+
+<code>void to_kernel_byte_order(void *data, unsigned size);</code><br>
+<p style="margin-left: 20px;">If the client and the kernel run on 
+architectures with different byte ordering, this routine byte-swaps the 
+provided user data to match the kernel byte ordering.</p>
+
+void to_client_byte_order(void *data, unsigned size);
+<p style="margin-left: 20px;">Similarly to the method above, this 
+routine converts the data copied from the kernel to match byte ordering 
+of the client.</p>
+
+<a name="Code_Structure_Ops"></a><h4>2.1.3 Operations on Kernel Code Structures</h4>
+
+<code>unsigned getNumModules() const;</code>
+<p style="margin-left: 20px;">Returns the total number of modules loaded 
+in the kernel.</p>
+
+<code>ierr findModule(const char *mod_name, kapi_module *mod);</code>
+<p style="margin-left: 20px;">Finds a kernel module with requested
+<code>mod_name</code>. Fills-in the provided <code>mod</code> object to 
+represent this module in the API. Returns an error code if the module 
+was not found.</p>
+
+<code>ierr getAllModules(kapi_vector&lt;kapi_module&gt; *vec);</code>
+<p style="margin-left: 20px;">Retrieves a vector of all modules in the 
+kernel.</p>
+
+<code>ierr findFunctionByAddress(kptr_t addr, kapi_function *func);</code>
+<p style="margin-left: 20px;">Finds the function starting at <code>addr</code> 
+and initializes <code>func</code>. 
+Returns an error code if the function was not found.</p>
+
+<pre>ierr findModuleAndFunctionByAddress(kptr_t addr,
+			            kapi_module *mod, kapi_function *func);</pre>
+<p style="margin-left: 20px;">Finds a module which has a function 
+starting at <code>addr</code>. Fills-in both <code>mod</code> and 
+<code>func</code> objects. Returns an error code if the function was not 
+found.</p>
+
+<a name="Instrumentation_Methods"></a><h4>2.1.4 Instrumentation-related methods</h4>
+
+<code>int insertSnippet(const kapi_snippet &amp;snippet, const kapi_point &amp;point);</code>
+<p style="margin-left: 20px;">Inserts the <code>snippet</code> at the 
+specified <code>point</code> 
+in the kernel and return its handle. The return value represents either 
+a positive snippet handle on success, or a negative error code on failure.</p>
+
+<code>ierr removeSnippet(int handle);</code>
+<p style="margin-left: 20px;">Removes the previously-inserted snippet 
+associated with the supplied <code>handle</code>. 
+Returns an error code if the handle is invalid.</p>
+
+<code>int uploadSnippet(const kapi_snippet &amp;snippet, const kapi_vector&lt;kapi_point&gt; &amp;points);</code>
+<p style="margin-left: 20px;">Uploads a <code>snippet</code> into the kernel, 
+but does 
+not splice it yet. It can later be spliced at any of the given 
+<code>points</code>. 
+The <code>points</code> vector may be empty (which 
+will generate code that can be spliced anywhere) at the expense of having 
+less efficient instrumentation. NOTE: This function is only supported
+in the SPARC/Solaris distribution.</p>
+
+<code>ierr removeUploadedSnippet(unsigned handle);</code>
+<p style="margin-left: 20px;">Remote a previously-uploaded snippet denoted
+by <code>handle</code>. 
+Returns an error code if the handle is invalid. NOTE: This function is
+only supported in the SPARC/Solaris distribution.</p>
+
+<code>kptr_t getUploadedAddress(unsigned handle);</code>
+<p style="margin-left: 20px;">Finds where the snippet associated with
+<code>handle</code> has been uploaded. 
+Returns zero if the handle is invalid. NOTE: This function is only
+supported in the SPARC/Solaris distribution.</p>
+
+<code>ierr createInstPointAtAddr(kptr_t address, kapi_point *point);</code>
+<p style="margin-left: 20px;">Fills-in the kapi_point object to represent the 
+instrumentation point at the specified kernel address. When instrumenting 
+well-defined points like function entry/exit, it is recommended to use 
+point-location methods of the <a href="Class_kapi_function">kapi_function</a> 
+and <a href="Class_kapi_basic_block">kapi_basic_block</a> classes instead.</p>
+
+<code>ierr findSpecialPoints(kapi_point_location type, kapi_vector&lt;kapi_point&gt; *points) const;</code>
+<p style="margin-left: 20px;">Finds unusual instrumentation points that 
+may be of interest to users: context switch code, system call path, ... 
+Presently, only the switch-in-out points are implemented. 
+Fills-in the provided vector with points found.</p>
+
+<code>ierr setTestingFlag(bool flag);</code>
+<p style="margin-left: 20px;">Sets a flag within the kerninst daemon that
+determines whether instrumentation code will actually be spliced into the 
+kernel. If <code>flag</code> is set to <i>true</i>, instrumentation will be
+generated in kernel memory but will not be spliced into execution. This 
+function is most often used when debugging problems with the generated
+instrumentation code.</p>
+
+<code>kapi_snippet getPreemptionProtectedCode(const kapi_snippet &unsafe_code);</code>
+<p style="margin-left: 20px;">Returns a snippet containing <code>unsafe_code</code> 
+wrapped with code necessary to disable preemption.  This is necessary if 
+<code>unsafe_code</code> does per-processor variable updates.  See also 
+<a href="#Class_kapi_arith_expr"><code>kapi_atomic_assign</code> </a></p>
+
+
+<a name="Data_Sampling"></a><h4>2.1.5 Data Sampling</h4>
+
+<p>KAPI provides routines for peeking at kernel data at periodic intervals. 
+The following methods implement this functionality.</p>
+
+<pre>
+struct kapi_mem_region {
+    kptr_t addr;
+    unsigned nbytes;
+};
+</pre>
+
+<pre>typedef int (*data_callback_t)(unsigned reqid, uint64_t time_of_sample,
+                               const uint64_t *sampled_values, unsigned numvalues);</pre>
+
+<code>int sample_periodically(const kapi_vector&lt;kapi_mem_region&gt; &amp;regions, data_callback_t cback, unsigned ms);</code>
+<p style="margin-left: 20px;">Starts copying memory from the kernel 
+periodically, every ms milliseconds. Returns the request handle. The 
+memory to sample is specified as a set of 
+disjoint regions of type <code>kapi_mem_region</code>. When a sample arrives, 
+the provided <code>cback</code> callback will be invoked with the contents of 
+the regions concatenated in one vector. We assume that we are sampling a 
+collection of 64-bit integers, so the data is converted 
+accordingly if the daemon and the client run on different architectures. 
+If <code>ms</code> is zero then sample just once.</p>
+
+<code>ierr stop_sampling(int handle);</code>
+<p style="margin-left: 20px;">Stops the sampling request given a 
+<code>handle</code>. Returns an error code if the handle is invalid.</p>
+
+<code>ierr adjust_sampling_interval(int handle, unsigned new_ms);</code>
+<p style="margin-left: 20px;">Changes the sampling interval for a given 
+request to <code>new_ms<\code>. 
+Two special cases: if new_ms is zero we stop sampling. If old_ms was 0 
+and new_ms is non-zero we start sampling. Returns an error code if the 
+<code>handle</code> is invalid.</p>
+
+<a name="Handling_API_Events"></a><h4>2.1.6 Handling API events</h4>
+
+<p>To support the callback functionality, the API needs to receive control 
+periodically and handle pending events. The programmer's responsibility 
+is to wait or poll to see if there are any events to be handled and invoke 
+the <code>handleEvents()</code> method if so.</p>
+
+<code>ierr handleEvents();</code>
+<p style="margin-left: 20px;">Handle pending events</p>
+
+<p>KAPI provides two different ways to wait for incoming events: 
+<code>waitForEvents()</code> 
+and <code>getEventQueueDescriptor()/select()</code>. You can use a way, 
+which better fits your application structure.</p>
+
+<code>ierr waitForEvents(unsigned timeoutMilliseconds);</code>
+<p style="margin-left: 20px;">Waits for incoming events (callbacks and 
+data samples). <code>timeoutMilliseconds</code> specifies the maximum 
+amount of time you want to wait (set it to 0 if 
+you do not want to block or to UINT_MAX to wait forever). Returns 1 if 
+events are pending, 0 if timed out, < 0 on error.</p>
+
+<code>int getEventQueueDescriptor();</code>
+<p style="margin-left: 20px;">Alternative way of waiting for events. 
+Returns a file descriptor that you can add to read_fds and error_fds 
+and call <code>select()</code> on them.</p>
+
+<a name="Handling_Indirect_Calls"></a><h4>2.1.7 Handling Indirect Calls</h4>
+
+<p>The code analysis framework of KAPI allows the programmer to walk the 
+static call graph of the kernel by starting at a top-level function, 
+descending into its callees, and so on. See
+<a href="#Class_kapi_function"><code>kapi_function::getCallees()</code></a>
+for details. Unfortunately, 
+kernel code is full of indirect calls, where targets are not known in 
+advance. As a result, the static approach 
+of <code>kapi_function::getCallees()</code> may not be able to find all 
+callees.</p>
+
+<p>Fortunately, KAPI provides primitives for discovering such callees at 
+run time by instrumenting the corresponding call sites and snooping on 
+destination addresses as the calls are made. To use this feature, the 
+programmer needs to install a watchpoint on a 
+callsite of interest with <code>watchCalleesAt(addr)</code>, let the 
+kernel run for a while, remove the watchpoint with 
+<code>unWatchCalleesAt(addr)</code> and retrieve the 
+accumulated callee information with <code>getCalleesForSite()</code>.
+</p>
+
+<code>ierr watchCalleesAt(kptr_t addrFrom);</code>
+<p style="margin-left: 20px;">Collect callee addresses for a given 
+callsite of an indirect call. Use <code>kapi_function::getCallees()</code> 
+to find such callsites for a given function.</p>
+    
+<code>ierr unWatchCalleesAt(kptr_t addrFrom);</code>
+<p style="margin-left: 20px;">Stop collecting callee addresses for a given 
+callsite.</p>
+
+<code>ierr getCalleesForSite(kptr_t siteAddr, kapi_vector<kptr_t> *calleeAddrs,
+			     kapi_vector<unsigned> *calleeCounts);</code>
+<p style="margin-left: 20px;">Fill-in the supplied vectors with callee 
+addresses and execution counts collected so far. The callsite must be in the 
+unwatched state or this method will return an error</p>
+
+<a name="Function_Replacement"></a><h4>2.1.8 Support for Function Replacement</h4>
+<p>Function replacement is the ability for a programmer to substitute
+an alternate implementation of a kernel function for the default 
+implementation. There are two independent methods provided by the KAPI to 
+perform function replacement. Both methods are implemented to assume that the
+arguments to the original and replacement implementation of the function being
+replaced are identical. It is suggested that replacement versions of kernel
+functions be implemented in a kernel module rather than via KAPI snippets
+to assure correctness with respect to calling conventions and kernel
+data types.</p>
+
+<p>The first method provided by KAPI, which we refer to as 
+<i>true function replacement</i>, instruments the original function at its 
+very first instruction to place an unconditional control transfer to the 
+replacement. After the instrumentation has been performed, all calls made
+from anywhere in the kernel to the original function will be redirected 
+to the replacement function. The following two methods are provided to do
+<i>true function replacement</i></p>
+
+<code>int replaceFunction(kptr_t oldFnStartAddr, kptr_t newFnStartAddr);</code>
+<p style="margin-left: 20px;">Replaces the function
+defined at <code>oldFnStartAddr</code> with the one at 
+<code>newFnStartAddr</code>. The return value is a request id to be used
+when undoing the replacement.</p>
+
+<code>ierr unreplaceFunction(unsigned reqid);</code>
+<p style="margin-left: 20px;">Nullifies the replacement associated
+with <code>reqid</code>.</p>
+
+<p>The second method provided by KAPI, which we refer to as
+<i>callsite function replacement</i>, instruments a single callsite to replace
+the destination address of the call with the entry address of the replacement
+function. After the instrumentation has been performed, any time the
+modified callsite is executed, the replacement function will be called
+instead of the original. The following two methods are provided to do 
+<i>callsite function replacement</i>.</p>
+
+<code>int replaceFunctionCall(kptr_t callSiteAddr, kptr_t newFnStartAddr);</code>
+<p style="margin-left: 20px;">Replaces the destination address
+of the call at <code>callSiteAddr</code> with the value 
+<code>newFnStartAddr</code>. The return value is a request id to be used
+when undoing the callsite replacement.</p>
+
+<code>ierr unreplaceFunctionCall(unsigned reqid);</code>
+<p style="margin-left: 20px;">Nullifies the replacement associated
+with <code>reqid</code>.</p>
+
+<a name="Disass_Support"></a><h4>2.1.9 Support for Disassembly</h4>
+
+<p>KAPI provides some support for code disassembly. The programmer can 
+disassemble a function, a basic block or an arbitrary region of code. The 
+results are returned as an instance of 
+<a href="#Class_kapi_disass_object">kapi_disass_object</a>, which is a 
+collection of <a href="#Class_kapi_disass_chunk">kapi_disass_chunk</a> 
+instances. Each kapi_disass_chunk 
+represents disassembly of a contiguous region of code 
+and is a collection of <a href="#Class_kapi_disass_insn">kapi_disass_insn</a> 
+objects. Finally, a 
+kapi_disass_insn object contains textual representation of disassembly 
+results for an individual instruction.</p>
+
+<code><pre>ierr getDisassObject(const kapi_function &amp;kfunc, bbid_t bbid,
+		     bool useOrigImage, kapi_disass_object *pdis);</pre></code>
+<p style="margin-left: 20px;">Disassembles a function or a basic block 
+within the function. Fills-in the provided kapi_disass_object. Set bbid 
+to '<code>bbid_t(-1)</code>' to disassemble the entire 
+function. Can disassemble either the current, possibly instrumented, 
+function or the original image, before any instrumentation took place.</p>
+
+<code>ierr getDisassObject(kptr_t start, kptr_t finish, kapi_disass_object 
+*kdis);</code>
+<p style="margin-left: 20px;">Disassembles the specified range of 
+addresses and fills-in the disass object</p>
+  
+<a name="Register_Analysis"></a><h4>2.1.10 Support for Register Analysis</h4>
+
+<p>In order to perform efficient instrumentation, we are required to
+perform register liveness analysis to identify the registers that must
+be saved at some instrumentation point before being used by instrumentation.
+We recognize the usefulness of this information for other purposes as well,
+and therefore provide the following routine for retrieving the results of
+the analysis.</p>
+
+<code><pre>
+ierr getRegAnalysisResults(kptr_t addr, bool beforeInsn,
+			   bool globalAnalysis,
+			   char *buffer, unsigned maxBytes);</pre></code>
+<p style="margin-left: 20px;">Places into <code>buffer</code>
+a printable string of register liveness analysis info for the given 
+address <code>addr</code>. The analysis used is a standard reverse-path
+dataflow analysis, and provides liveness information from the end of the
+enclosing function to the given address. If <code>beforeInsn</code> is false, 
+we include the effects of the instruction at <code>addr</code> in the 
+analysis. If <code>globalAnalysis</code> is false, the results for this 
+instruction in isolation are reported. If the result string is longer than 
+the user buffer length <code>maxBytes</code>, a negative error code is 
+returned. The string returned is of the following format:<br>
+<pre>
+         killed: &lt;list of register names&gt;
+         made live: &lt;list of register names&gt;
+</pre>
+</p>
+
+<a name="VTimer_Support"></a><h4>2.1.11 Support for Virtualized Timers</h4>
+
+<p>The following methods are used to help support virtualized timers. Unless
+you fully understand the timer support model in Kerninst, you should not
+use these functions directly. Refer to the 'Timer & Performance Counter Usage'
+section of the KAPI Programming Guide for information on using virtualized
+timers.</p>
+
+<code>kptr_t getAllVtimersAddr();</code>
+<p style="margin-left: 20px;">Returns the address of the in-kernel
+array of virtual timers.</p>
+
+<code>ierr addTimerToAllVTimers(kptr_t timer_addr);</code>
+<p style="margin-left: 20px;">Appends the vtimer specified by
+<code>timer_addr</code> to the in-kernel array of virtual timers.</p>
+
+<code>ierr removeTimerFromAllVTimers(kptr_t timer_addr);</code>
+<p style="margin-left: 20px;">Removes the vtimer specified by
+<code>timer_addr</code> from the in-kernel array of virtual timers.</p>
+
+<a name="Class_kapi_module"></a><h3>2.2 Class kapi_module</h3>
+<p>This class represents a kernel module -- a logically-connected group 
+of functions. We assume that the entire kernel is made of kernel modules, 
+which is true of Solaris. On Linux, there is some portion of code that
+is only available in the kernel proper, and thus not part of any module.
+Therefore, on Linux we place all of this code (and the code of any
+modules compiled into the kernel) in a module named "kernel".</p>
+
+<code>kapi_module();</code>
+<p style="margin-left: 20px;">Constructs an uninitialized instance of 
+kapi_module. The instance will be filled-in by the parent class 
+<a href="#Class_kapi_manager">kapi_manager</a> (via the findModule method).</p>
+
+<code>ierr getName(char *name, unsigned max_len_bytes) const;</code>
+<p style="margin-left: 20px;">Fills-in the module <code>name</code>. Returns 
+not_enough_space if the actual module name is longer than 
+<code>max_len_bytes</code>.</p>
+
+<code>ierr getDescription(char *desc, unsigned max_len_bytes) const;</code>
+<p style="margin-left: 20px;">Some modules have short descriptions 
+defined for them. This method fills-in the module description, if any, 
+into <code>desc</code>. Returns not_enough_space if the 
+actual module description is longer than <code>max_len_bytes</code>.</p>
+
+<code>unsigned getNumFunctions() const;</code>
+<p style="margin-left: 20px;">Returns the number of functions in the module</p>
+
+<code>ierr findFunction(const char *func_name, kapi_function *func) const;</code>
+<p style="margin-left: 20px;">Finds a function with this name in the 
+module and fills-in 
+<code>func</code>. Returns an error code if the function was not found.</p>
+
+<code>ierr getAllFunctions(kapi_vector&lt;kapi_function&gt; *vec) const;</code>
+<p style="margin-left: 20px;">Fills-in a vector of all functions in 
+the module</p>
+
+<a name="Class_kapi_function"></a><h3>2.3 Class kapi_function</h3>
+<p> This class corresponds to a kernel function. It allows the programmer 
+to navigate through the function's resources: basic blocks and instrumentation 
+points.</p>
+
+<code>kapi_function();</code>
+<p style="margin-left: 20px;">Constructs an uninitialized instance of a 
+kapi_function 
+object. The instance should be filled-in later via calls to 
+<code>kapi_module::findFunction</code>, 
+<code>kapi_manager::findFunctionByAddress</code>, or 
+<code>kapi_manager::findModuleAndFunctionByAddress</code>.</p>
+
+<code>kptr_t getEntryAddr() const;</code>
+<p style="margin-left: 20px;">Returns the address of the function's 
+entry point</p>
+
+<code>ierr getName(char *name, unsigned max_bytes) const;</code>
+<p style="margin-left: 20px;">Fills-in the function <code>name</code>. Returns 
+not_enough_space if the actual name is longer than 
+<code>max_len_bytes</code>.</p>
+
+<code>unsigned getNumBasicBlocks() const;</code>
+<p style="margin-left: 20px;">Returns the number of basic blocks in the 
+function</p>
+
+<code>ierr findBasicBlock(kptr_t addr, kapi_basic_block *bb) const;</code>
+<p style="margin-left: 20px;">Finds the basic block starting at 
+<code>addr</code> and fills-in <code>bb</code>. Returns an error code if no 
+basic block starts at addr.</p>
+
+<code>ierr findBasicBlockById(bbid_t bbid, kapi_basic_block *bb) const;</code>
+<p style="margin-left: 20px;">Within the function, all basic blocks are 
+enumerated (0 to N). 
+This method fills-in <code>bb</code> given its sequential id. Returns an 
+error code if <code>bbid</code> is greater than N.</p>
+
+<code>bbid_t getBasicBlockIdByAddress(kptr_t addr) const;</code>
+<p style="margin-left: 20px;">Converts the starting address of a basic 
+block into its sequential id. Returns bbid_t(-1) if no basic block starts 
+at <code>addr</code>.</p>
+
+<code>ierr getAllBasicBlocks(kapi_vector&lt;kapi_basic_block&gt; *vec) const;</code>
+<p style="margin-left: 20px;">Fills-in a vector of all basic blocks in the 
+function.</p>
+
+<code>ierr findEntryPoint(kapi_vector&lt;kapi_point&gt; *points) const;</code>
+<p style="margin-left: 20px;">Fills-in a vector of entry points of the 
+function. Typically, this vector contains only one element.</p>
+
+<code>ierr findExitPoints(kapi_vector&lt;kapi_point&gt; *points) const;</code>
+<p style="margin-left: 20px;">Fills-in a vector of exit points of the 
+function. Contrary to the entry point, this vector can easily contain 
+more than one element.</p>
+
+<code>bool isUnparsed() const;</code>
+<p style="margin-left: 20px;">Some functions can not be analyzed and 
+hence instrumented at 
+this time. Attempts to instrument them will return an error. This function
+returns true if the function was unanalyzable.</p>
+
+<code>unsigned getNumAliases() const;</code>
+<p style="margin-left: 20px;">There can be several names mapping to the 
+same address. This 
+method returns the number of aliases, including the primary name.</p>
+<code>ierr getAliasName(unsigned ialias, char *buffer, unsigned buflen) const;</code>
+<p style="margin-left: 20px;">Fills-in the <code>ialias</code>th alias name 
+into <code>buffer</code>. Returns an error code if there is no such alias 
+or if there is not enough space to store its name.</p>
+
+<pre>ierr getCallees(const kapi_vector&lt;bbid_t&gt; *blocks,
+		kapi_vector&lt;kptr_t&gt; *regCallsFromAddr,
+		kapi_vector&lt;kptr_t&gt; *regCallsToAddr,
+		kapi_vector&lt;kptr_t&gt; *interprocBranchesFromAddr,
+		kapi_vector&lt;kptr_t&gt; *interprocBranchesToAddr,
+		kapi_vector&lt;kptr_t&gt; *unanalyzableCallsFromAddr) const;</pre>
+<p style="margin-left: 20px;">Finds and reports all callees of this 
+function. For each call we try to determine its source address (the 
+address of the call instruction) as well as its 
+destination address (the address of the callee). Regular calls, 
+indirect calls (unanalyzableCallsFromAddr), and interprocedural branches 
+are located. If the <code>blocks</code> argument 
+is not NULL, only calls made in these basic blocks are reported. 
+See <a href="#Handling_Indirect_Calls">"Handling Indirect Calls"</a> for 
+information on how to discover targets of indirect calls.</p>
+
+<a name="Class_kapi_basic_block"></a><h3>2.4 Class kapi_basic_block</h3>
+<p>This class represents a basic block of kernel code.</p>
+
+<code>kapi_basic_block();</code>
+<p style="margin-left: 20px;">Constructs an uninitialized instance of the 
+basic block object. The instance should be filled-in later via calls to 
+<code>kapi_function::findBasicBlock()</code> or 
+<code>kapi_function::findBasicBlockById()</code>.</p>
+
+<code>kptr_t getStartAddr() const;</code>
+<p style="margin-left: 20px;">Returns the start address of the basic block.</p>
+
+<code>kptr_t getEndAddrPlus1() const;</code>
+<p style="margin-left: 20px;">Returns the address immediately following the
+last instruction in the basic block.</p>
+
+<code>kptr_t getExitAddr() const;</code>
+<p style="margin-left: 20px;">Returns the exit address of the block. 
+Basically, you need to insertSnippet at that address to catch the exit 
+from the block. For the SPARC architecture, thanks to delay slots, it 
+may or may not correspond to the last instruction in the block.</p>
+
+<a name="Class_kapi_point"></a><h3>2.5 Class kapi_point</h3>
+<p>This class represents an instrumentation point -- a location in the 
+kernel code where we can insert instrumentation.</p>
+
+<code>kapi_point();</code>
+<p style="margin-left: 20px;">Creates an uninitialized instance of the 
+kapi_point object. The instance should be filled-in later via calls to 
+<code>kapi_function::findEntryPoint</code>, 
+<code>kapi_manager::createInstPointAtAddr</code>, etc.</p>
+
+<code>kptr_t getAddress() const;</code>
+<p style="margin-left: 20px;">Returns the address associated with the
+point.</p>
+
+<a name="Class_kapi_snippet"></a><h3>2.6 Class kapi_snippet and derived classes</h3>
+<p>kapi_snippet is the base class of every instrumentation code 
+construct in KAPI. This class should never be used directly, as it merely
+exists to provide a polymorphic equivalence among the derived classes. 
+Typically, the appropriate derived class is used instead.</p>
+
+<a name="Class_kapi_const_expr"></a><h4>2.6.1 Class kapi_const_expr</h4>
+<code>kapi_const_expr(kapi_int_t val);</code>
+<p style="margin-left: 20px;">This class represents a constant 
+integer expression with value <code>val</code>.</p>
+
+<a name="Class_kapi_int_variable"></a><h4>2.6.2 Class kapi_int_variable</h4>
+<p>This class represents an integer variable in the kernel space. On
+64-bit architectures, it represents a 64-bit integer. On 32-bit
+architectures, it represents a 32-bit integer. The class 
+<code>kapi_int64_variabl</code>e is defined for 32-bit architectures to 
+represent
+long long integers, and has the same construction methods as
+<code>kapi_int_variable</code> (described here).</p>
+
+<code>kapi_int_variable(kptr_t addr);</code>
+<p style="margin-left: 20px;">Declares a variable stored at the 
+pre-allocated kernel address specified by <code>addr</code>. Use 
+<code>kapi_manager::malloc(sizeof(kapi_int_t))</code> to allocate space 
+first.</p>
+
+<code>kapi_int_variable(kptr_t v, const kapi_snippet &amp;index);</code>
+<p style="margin-left: 20px;">Declares an integer scalar variable 
+<code>v[index]</code>, which is an element of a vector, starting at address 
+<code>v</code>. The exact location of the variable is determined 
+at run time after the index expression is evaluated.</p>
+
+<code>kapi_int_variable(const kapi_snippet &amp;addr_expr);</code>
+<p style="margin-left: 20px;">Declares an integer variable, which 
+location is specified by <code>addr_expr</code> and will be known only at 
+run time.</p>
+
+<a name="Class_kapi_arith_expr"></a><h4>2.6.3 Class kapi_arith_expr</h4>
+<p>This class allows the programmer to construct binary arithmetic 
+expressions.</p>
+
+<code>kapi_arith_expr(kapi_arith_operation kind, const kapi_snippet &amp;lOpd, const kapi_snippet &amp;rOpd);</code>
+<p style="margin-left: 20px;">Declares a binary expression, combining 
+the values of <code>lOpd</code> and <code>rOpd</code> with the operation 
+specified by <code>kind</code>. The 
+following binary operations are currently supported.</p>
+
+<pre>
+enum kapi_arith_operation {
+    kapi_plus,
+    kapi_minus,
+    kapi_times,
+    kapi_divide,
+    kapi_bit_and,
+    kapi_bit_or,
+    kapi_shift_left,
+    kapi_shift_right,
+    kapi_atomic_assign,
+    kapi_assign
+};
+</pre>
+<p style="margin-left: 20px;">We suggest using  <code>kapi_atomic_assign</code> 
+ instead of <code>kapi_assign</code> when the host on which kerninstd is 
+ running  is a multi-processor and all processors are updating the same 
+ variable.  The atomicity ensures safe updates to the variable
+ being assigned.  For per-processor variable updates, we recommend using
+ <a href="#Instrumentation_Methods"><code>kapi_manager::getPreemptionProtectedCode</code>.
+ </a></p>
+<p style="margin-left: 20px;">NOTE: On Power, be careful when using 
+<code>kapi_atomic_assign</code> in instrumenting code that includes 
+<code>Load and Reserve</code> and <code> Store Conditional</code>
+instructions.  <code>kapi_atomic_assign</code> <B>cannot</b> be
+inside instrumentation that is placed after <code>Load and Reserve</code>,
+but before the corresponding <code>Store Conditional</code> instruction. 
+
+<a name="Class_kapi_sequence_expr"></a><h4>2.6.4 Class kapi_sequence_expr</h4>
+<p>This class allows the programmer to chain multiple expressions together.</p>
+
+<code>kapi_sequence_expr(const kapi_vector&lt;kapi_snippet&gt; &amp;exprs);</code>
+<p style="margin-left: 20px;">Declares a sequence expression. Expressions 
+in the <code>exprs</code> vector will be evaluated in the order they are 
+stored in the vector.</p>
+
+<a name="Class_kapi_bool_expr"></a><h4>2.6.5 Class kapi_bool_expr</h4>
+<p>This class allows the programmer to construct boolean expressions.</p>
+
+<code>kapi_bool_expr(bool value);</code>
+<p style="margin-left: 20px;">Declares a constant boolean expression 
+with given <code>value</code>.</p>
+
+<code>kapi_bool_expr(kapi_relation kind, const kapi_snippet &amp;lOpd, const kapi_snippet &amp;rOpd);</code>
+<p style="margin-left: 20px;">Declares a binary boolean expression, 
+which applies relation <code>kind</code> to the values of <code>lOpd</code> 
+and <code>rOpd</code>. The following relations are currently supported.</p>
+
+<pre>
+enum kapi_relation {
+    kapi_lt,
+    kapi_eq,
+    kapi_gt,
+    kapi_le,
+    kapi_ne,
+    kapi_ge,
+    kapi_log_and,
+    kapi_log_or
+};
+</pre>
+
+<a name="Class_kapi_if_expr"></a><h4>2.6.6 Class kapi_if_expr</h4>
+
+<p>This class allows the programmer to construct 'if-then' and 'if-then-else' 
+expressions.</p>
+
+<code>kapi_if_expr(const kapi_bool_expr &amp;cond, const kapi_snippet &amp;trueClause);</code>
+<p style="margin-left: 20px;">Declares an 'if-then' expression. The boolean 
+<code>cond</code> expression is used to decide if <code>trueClause</code> 
+should be executed.</p>
+
+<code>kapi_if_expr(const kapi_bool_expr &amp;cond, const kapi_snippet &amp;trueClause, const kapi_snippet &amp;falseClause);</code>
+<p style="margin-left: 20px;">Declares an 'if-then-else' expression. The 
+boolean <code>cond</code> expression is used to decide whether to execute the 
+<code>trueClause</code> or the <code>falseClause</code> expression.</p>
+
+<a name="Class_kapi_param_expr"></a><h4>2.6.7 Class kapi_param_expr</h4>
+
+<code>kapi_param_expr(unsigned n);</code>
+<p style="margin-left: 20px;">Declares an expression with value equal to 
+the <code>n</code>th parameter of a function being instrumented. The first 
+parameter corresponds to an n-value equal to zero. This snippet type is valid 
+only at points that are entries to subroutines.</p>
+
+<a name="Class_kapi_retval_expr"></a><h4>2.6.8 Class kapi_retval_expr</h4>
+
+<code>kapi_retval_expr(const kapi_function &amp;func);</code>
+<p style="margin-left: 20px;">Declares an expression with value equal to 
+the return value of <code>func</code>, which is being instrumented. 
+This snippet type is valid only at points that are exits from subroutines.</p>
+
+<a name="Class_kapi_call_expr"></a><h4>2.6.9 Class kapi_call_expr</h4>
+
+<code>kapi_call_expr(kptr_t entryAddr, const kapi_vector&lt;kapi_snippet&gt; &amp;args);</code>
+<p style="margin-left: 20px;">Declares a call expression to call a 
+function starting at <code>entryAddr</code> and pass the given arguments 
+vector <code>args</code> to it.</p>
+
+<a name="Class_kapi_ret_expr"></a><h4>2.6.10 Class kapi_ret_expr</h4>
+
+<code>kapi_ret_expr();</code>
+<p style="margin-left: 20px;">Declares a return statement, which is useful 
+for generating subroutines on the fly. Do not confuse this statement with 
+<code>kapi_retval_expr</code>.</p>
+
+<a name="Class_kapi_hwcounter_expr"></a><h4>2.6.11 Class kapi_hwcounter_expr</h4>
+
+<code>kapi_hwcounter_expr(kapi_hwcounter_kind type);</code>
+<p style="margin-left: 20px;">Declares an expression equal to the value 
+of a hardware counter at the moment of evaluation. Note that the types of 
+counters supported are dependent on the hardware architecture of the machine
+running the KernInst daemon (kerninstd). The following hardware 
+counters are currently supported. </p>
+
+<pre>
+typedef enum {
+    HWC_NONE = 0, // No counter selected
+    HWC_TICKS = 1, // Processor cycle counter
+
+On SPARC Systems:
+    HWC_DCACHE_VREADS = 2,                // D-cache read references
+    HWC_DCACHE_VWRITES = 3,               // D-cache write references
+    HWC_DCACHE_VREAD_HITS = 4,            // D-cache read hits
+    HWC_DCACHE_VWRITE_HITS = 5,           // D-cache write hits
+    HWC_ICACHE_VREFS = 6,                 // Instruction cache references
+    HWC_ICACHE_VHITS = 7,                 // Instruction cache hits
+    HWC_ICACHE_STALL_CYCLES = 8,          // Cycles stalled handling I-cache misses
+    HWC_BRANCH_MISPRED_VSTALL_CYCLES = 9, // Cycles stalled handling branch mispredictions
+    HWC_ECACHE_VREFS = 10,                // L2 cache references
+    HWC_ECACHE_VHITS = 11,                // L2 cache hits
+    HWC_ECACHE_VREAD_HITS = 12,           // L2 cache read hits
+    HWC_VINSNS = 13                       // Instructions completed
+
+On Intel Pentium 4 or Xeon Systems:
+    HWC_ITLB_HIT = 2,                     // Instruction TLB Hits
+    HWC_ITLB_UNCACHEABLE_HIT = 3,         // Instruction TLB Hits (uncacheable)
+    HWC_ITLB_MISS = 4,                    // Instruction TLB Misses
+    HWC_ITLB_MISS_PAGE_WALK = 5,          // Page walks by the page miss handler due to Instruction TLB Misses
+    HWC_DTLB_MISS_PAGE_WALK = 6,          // Page walks by the page miss handler due to Data TLB Misses
+    HWC_L2_READ_HIT_SHR = 7,              // L2 cache Read Hits (shared)
+    HWC_L2_READ_HIT_EXCL = 8,             // L2 cache Read Hits (exclusive)
+    HWC_L2_READ_HIT_MOD = 9,              // L2 cache Read Hits (modified)
+    HWC_L2_READ_MISS = 10,                // L2 cache Read Misses
+    HWC_L3_READ_HIT_SHR = 11,             // L3 cache Read Hits (shared) 
+    HWC_L3_READ_HIT_EXCL = 12,            // L3 cache Read Hits (exclusive)
+    HWC_L3_READ_HIT_MOD = 13,             // L3 cache Read Hits (modified)
+    HWC_L3_READ_MISS = 14,                // L3 cache Read Misses
+    HWC_COND_BRANCH_MISPREDICT = 15,      // Conditional jumps mispredicted
+    HWC_COND_BRANCH = 16,                 // Conditional jumps predicted
+    HWC_CALL_MISPREDICT = 17,             // Indirect calls mispredicted
+    HWC_CALL = 18,                        // Direct or indirect calls predicted
+    HWC_RET_MISPREDICT = 19,              // Return branches mispredicted
+    HWC_RET = 20,                         // Return branches predicted
+    HWC_INDIRECT_MISPREDICT = 21,         // Indirect calls, indirect jumps, and returns mispredicted
+    HWC_INDIRECT = 22,                    // Indirect calls, indirect jumps, and returns predicted
+    HWC_MEM_LOAD = 23,                    // Memory Reads
+    HWC_MEM_STORE = 24,                   // Memory Writes
+    HWC_L1_LOAD_MISS = 25,                // L1 cache Read Misses
+    HWC_DTLB_LOAD_MISS = 26,              // Data TLB Read Misses
+    HWC_DTLB_STORE_MISS = 27,             // Data TLB Write Misses
+    HWC_INSTR_ISSUED = 28,                // Instructions issued (including re-issues due to bad speculation)
+    HWC_INSTR_RETIRED = 29,               // Completed instructions retired (NOTE: only available on P4/Xeon processors with model encoding 3)
+    HWC_UOPS_RETIRED = 30,                // Instruction micro-ops retired
+    HWC_BRANCH_TAKEN_PREDICT = 31,        // Branches taken predicted
+    HWC_BRANCH_TAKEN_MISPREDICT = 32,     // Branches taken mispredicted
+    HWC_BRANCH_NOTTAKEN_PREDICT = 33,     // Branches not-taken predicted
+    HWC_BRANCH_NOTTAKEN_MISPREDICT = 34,  // Branches not-taken mispredicted
+    HWC_PIPELINE_CLEAR = 35               // Instruction Pipeline Flushes
+
+On power4 systems:
+
+    HWC_RUN_CYCLES,                       // Processor Cycles gated by the run latch                
+    HWC_PROCESSOR_CYCLES,                 //Processor cycles
+    //NOTE: on power HWC_TICKS uses TB (timebase) register 
+    HWC_INSTRUCTIONS_COMPLETED,           //Instructions completed
+    HWC_L1_DATA_MISS,                     //L1 D-cache misses
+    HWC_L2_DATA_INVALIDATION,             //L2 D-cache invalidations 
+    HWC_INSTRUCTIONS_DISPATCHED,          //Instructions dispatched
+    HWC_L1_DATA_STORE,                    //L1 D-cache stores
+    HWC_L1_DATA_LOAD,                     //L1 D-cache reads
+    HWC_L3_DATA_LOAD,                     //L3 D-cache reads
+    HWC_DATA_MEMORY_LOAD,                 //Demand loads from memory
+    HWC_L3_DATA_LOAD_MCM,                 //L3 D-cache reads from another MCM
+    HWC_L2_DATA_LOAD,                     //l2 D-cache reads
+    HWC_L2_DATA_LOAD_SHARED,              //L2 D-cache reads of shared data
+    HWC_L2_DATA_LOAD_MCM,                 //L2 D-cache reads from another MCM
+    HWC_L2_DATA_LOAD_MODIFIED,            //L2 D-cache reads of modified data
+    HWC_L2_DATA_LOAD_MODIFIED_MCM,        //L2 D-cache reads of modified data from another MCM
+    HWC_MEMORY_INSTRUCTIONS_LOAD,         //Instructions loaded from memory
+    HWC_L2_INSTRUCTIONS_LOAD,             //L2 I-cache reads
+    HWC_L2_INSTRUCTIONS_LOAD_MCM,         //L2 I-cache reads from another MCM
+    HWC_L3_INSTRUCTIONS_LOAD,             //L3 I-cache reads
+    HWC_L3_INSTRUCTIONS_LOAD_MCM,         //L3 I-cache reads from another MCM
+    HWC_L1_INSTRUCTIONS_LOAD,             //L1 I-cache reads
+    HWC_PREFETCHED_INSTRUCTIONS,          //Prefetched instructions
+    HWC_NO_INSTRUCTIONS                   //Cycles when no instructions fetched
+
+} kapi_hwcounter_kind;
+</pre>
+
+<p>In order to successfully use the <code>kapi_hwcounter_expr</code> for 
+<code>kapi_hwcounter_kind</code> values other than <i>HWC_TICKS</i>, 
+you must also use the 
+<a href="#Class_kapi_hwcounter_set"><code>kapi_hwcounter_set</code> class</a> 
+methods to enable the counter on the target machine. An example of the 
+operations to be performed follows, where <code>type</code> is some valid
+<code>kapi_hwcounter_kind</code> value:<br>
+<code><pre>
+      // Read the current performance counter configuration
+      kapi_hwcounter_set oldPcrVal;
+      if(oldPcrVal.readConfig() < 0) {
+         cerr << "ERROR: unable to read performance counter settings\n";
+         exit(-1);
+      }
+
+      // Update the settings to include the desired counter type
+      kapi_hwcounter_set newPcrVal = oldPcrVal;
+      newPcrVal.insert(type);
+            
+      // If the settings have changed, write to enable the new counter type
+      if(!newPcrVal.equals(oldPcrVal)) {
+         if(newPcrVal.writeConfig() < 0) {
+            cerr << "ERROR: unable to write performance counter settings\n";
+            exit(-1);
+         }
+      }
+</pre></code>
+Note that the above example code does not account for conflicts between
+the old and new performance counter settings. If you plan on using multiple
+types of <code>kapi_hwcounter_expr</code> at the same time, it is necessary 
+that you use the <code>kapi_hwcounter_set::conflictsWith()</code> method
+appropriately. If you wish to use this expression for timing purposes, we
+suggest you instead make use of the KAPI timer library as documented in
+the 'Timer & Performance Counter Usage' section of the KAPI Programming Guide.
+</p>
+
+<a name="Class_kapi_cpuid_expr"></a><h4>2.6.11 Class kapi_cpuid_expr</h4>
+
+<code>kapi_cpuid_expr();</code>
+<p style="margin-left: 20px;">Declares an expression that evaluates to 
+the physical id of the CPU that executed this code. Note that on
+certain multiprocessor machines, the physical id's may not be sequential.</p>
+
+<a name="Class_kapi_pid_expr"></a><h4>2.6.12 Class kapi_pid_expr</h4>
+
+<code>kapi_pid_expr();</code>
+<p style="margin-left: 20px;">Declares an expression that evaluates to the 
+process id (pid) of the executing thread. For the Solaris operating system,
+kernel threads have a pid of zero.</p>
+
+<a name="Class_kapi_vector"></a><h3>2.7 Class kapi_vector</h3>
+<p> This class is a container used to hold objects used by the API. It 
+provides a small subset of the STL vector interface and serves as an 
+intermediary between the programmer and the internal vector representation 
+in KAPI.</p>
+
+<code>kapi_vector();</code>
+<p style="margin-left: 20px;">Creates an empty vector.</p>
+
+<code>void push_back(const T &amp;item);</code>
+<p style="margin-left: 20px;">Appends <code>item</code> to the end of the vector</p>
+
+<code>unsigned size() const;</code>
+<p style="margin-left: 20px;">Returns the number of elements in the vector</p>
+
+<code>reference operator[] (unsigned i);</code>
+<p style="margin-left: 20px;">Returns a reference to the <code>i</code>th 
+element of the vector.</p>
+
+<code>iterator begin();</code><br>
+<code>iterator end();</code>
+<p style="margin-left: 20px;">Return iterators to the start and end, 
+respectively, of the vector.</p>
+
+<code>void clear();</code>
+<p style="margin-left: 20px;">Remove all elements from the vector</p>
+
+<a name="Class_kapi_hwcounter_set"></a><h3>2.8 Class kapi_hwcounter_set</h3>
+<p>This class represents and manipulates the set of hardware counters 
+currently selected on the processor(s) of the target machine. </p>
+
+<code>kapi_hwcounter_set();</code>
+<p style="margin-left: 20px;">Constructs an empty counter set. Notice 
+that it does not 
+match the current state of counters in the processor(s). See readConfig().</p>
+
+<code>ierr readConfig();</code>
+<p style="margin-left: 20px;">Synchronizes the set with the processor 
+state by reading what counters are actually enabled there.</p>
+
+<code>kapi_hwcounter_kind insert(kapi_hwcounter_kind kind);</code>
+<p style="margin-left: 20px;">Inserts a counter in the set. Since the 
+number of active counters is typically limited and some counters conflict 
+with each other, the insertion may 
+force another counter out of the set. The old value is returned. Notice 
+that the <code>insert()</code> method does not change the state of counters 
+in the processor(s) -- all changes need to be committed with a later 
+<code>writeConfig()</code>.</p>
+
+<code>void free(kapi_hwcounter_kind kind);</code>
+<p style="margin-left: 20px;">Removes the counter with associated
+<code>kind</code> from the set.</p>
+
+<code>bool conflictsWith(kapi_hwcounter_kind kind) const;</code>
+<p style="margin-left: 20px;">Checks to see if the given counter 
+<code>kind</code> can be enabled with no conflicts: without forcing another 
+counter from the set.</p>
+
+<code>ierr writeConfig();</code>
+<p style="margin-left: 20px;">Writes the current selection of counters 
+into the processor(s) state.</p>
+
+<a name="Class_kapi_disass_object"></a><h3>2.9 Class kapi_disass_object</h3>
+<p>This class is the top-level interface to disassembly. It represents 
+a collection of <code>kapi_disass_chunk</code>s.</p>
+
+<code>kapi_disass_object();</code>
+<p style="margin-left: 20px;">Constructs an uninitialized disassembly 
+object. Use <code>kapi_manager::getDisassObject()</code> to populate it.</p>
+
+<code>const_iterator begin() const;</code>
+<code>const_iterator end() const;</code>
+<p style="margin-left: 20px;">Return iterators to the start/end of the 
+<code>kapi_disass_chunk</code> collection.</p>
+
+<a name="Class_kapi_disass_chunk"></a><h3>2.10 Class kapi_disass_chunk</h3>
+<p>This class represents a collection of <code>kapi_disass_insn</code>s. 
+It should not be constructed directly -- <code>kapi_disass_object</code> 
+does that for you.</p>
+
+<code>const_iterator begin() const;</code><br>
+<code>const_iterator end() const;</code>
+<p style="margin-left: 20px;">Return iterators to the start/end of the 
+<code>kapi_disass_insn</code> collection.</p>
+
+<a name="Class_kapi_disass_insn"></a><h3>2.11 Class kapi_disass_insn</h3>
+<p>This class contains textual representation of a disassembled 
+instruction. It should not be constructed directly -- 
+<code>kapi_disass_chunk</code> does that for you.</p>
+
+<code>const char *getDisassembly() const;</code>
+<p style="margin-left: 20px;">Returns the textual representation of the 
+instruction.</p>
+
+<code>const void *getRaw() const;</code>
+<p style="margin-left: 20px;">Returns the binary representation of the 
+instruction.</p>
+
+<code>unsigned getNumBytes() const;</code>
+<p style="margin-left: 20px;">Returns the size of the binary representation.</p>
+
+<code>bool hasDestFunc() const;</code>
+<p style="margin-left: 20px;">True iff the instruction is a call and we know 
+its destination.</p>
+
+<code>const char *getDestFuncInfo() const;</code>
+<p style="margin-left: 20px;">If the instruction is a call, this method 
+returns the name of the function it is calling.</p>
+
+</body>
+</html>

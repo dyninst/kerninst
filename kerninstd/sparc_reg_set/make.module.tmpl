@@ -1,0 +1,26 @@
+NO_IMPLICIT_TEMPLATES = true
+USES_LIB_KERNINST_UTIL = true
+
+TARGET	      = regsettest
+
+SRCS	     += ../src/sparc_reg_set.C \
+		../src/sparc_fp_regset.C \
+		../src/sparc_int_regset.C \
+		../src/sparc_misc_regset.C \
+		../../immediates/src/uimm.C \
+		../../immediates/src/simm.C \
+		../../sparc_reg/src/sparc_reg.C \
+		../../bitutils/src/bitUtils.C \
+		../src/templates.C ../src/main.C
+
+IFLAGS	     += -I../../immediates/src -I../../sparc_reg/src -I../../bitutils/src
+VPATH	     += ../src ../../immediates/src ../../sparc_reg/src ../../bitutils/src
+
+LIBS 	     += 
+SYSLIBS	     += -lnsl
+
+
+CFLAGS		+=
+CXXFLAGS	+=
+		   
+all:	$(TARGET) 

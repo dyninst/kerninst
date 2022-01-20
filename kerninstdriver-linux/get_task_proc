@@ -1,0 +1,54 @@
+#!/bin/bash
+
+if [ $# -ne 1 ]; then
+   echo "usage: $0 <path-to-gcc>"
+   exit -1
+fi
+
+KERNEL_VERSION=`uname -r`
+KERNEL_INC="/lib/modules/${KERNEL_VERSION}/build/include"
+
+FILE="test_cpu"
+
+# find an unused file name
+for i in 0 1 2 3 4 5 6 7 8 9; do
+   if [ ! -f "${FILE}${i}.c" ]; then
+      FILE="${FILE}${i}"
+      break
+   fi
+done
+
+TEST="$1 -Wall -O2 -D__KERNEL__ -DMODULE -DMODVERSIONS -I${KERNEL_INC} -c ${FILE}.c"
+
+# try 'cpu'
+
+cat > ${FILE}.c << END_CODE1
+#include <linux/sched.h>
+unsigned int test(struct task_struct *t)
+{
+   return t->cpu;
+}
+END_CODE1
+
+$TEST > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+   echo "-DUSE_TASK_CPU"
+else
+
+# try 'processor'
+cat > ${FILE}.c << END_CODE2
+#include <linux/sched.h>
+unsigned int test(struct task_struct *t)
+{
+   return t->processor;
+}
+END_CODE2
+
+$TEST > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+   echo "-DUSE_TASK_PROC"
+fi
+
+fi 
+
+/bin/rm -f ${FILE}.[co] > /dev/null 2>&1

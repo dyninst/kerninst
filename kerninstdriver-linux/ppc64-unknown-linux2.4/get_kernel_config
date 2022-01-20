@@ -1,0 +1,7 @@
+#!/bin/sh
+if [ -e /boot/vmlinuz-`uname -r`.config ]; then
+   echo "/boot/vmlinuz-`uname-r`.config";
+fi
+if [ -e /boot/config-`uname -r` ]; then
+   echo "/boot/config-`uname -r`";
+fi

@@ -1,0 +1,98 @@
+--------------------
+Release 2.1.0 Errata
+--------------------
+
+The following bugs were fixed from release 2.0.1 of the KernInst Tool
+Suite:
+
+Cross-Platform Fixes
+--------------------
+
+- Use of kerninstapi variable produces old value after atomic assignment
+
+A bug was identified in the kerninstapi AST code generator where a use of
+a kapi_int_variable after an atomic assignment to that variable would yield
+the old value of the variable, due to pseudoregister reuse. The reuse has
+been squashed.
+
+- List of basic block starting addresses not sorted in kperfmon disassembly
+
+Although not a bug, it was very annoying that the list of basic block
+starting addresses provided in the upper-right hand corner of original
+function disassembly windows was not sorted. This has been fixed.
+
+
+Sparc/Solaris Specific Fixes
+----------------------------
+
+- Assert when running 'kerninstd -v' due to presence of v9 return
+
+A bug was identified in the analysis of kernel modules that included
+v9 style return instructions. v9 returns are now properly handled.
+
+
+IA-32/Linux Specific Fixes
+--------------------------
+
+- Properly identify Linux kernel synchronization mechanisms on uni kernels
+
+A bug was identified where kernel synchronization mechanisms on uni-processor
+kernels were being identified as interprocedural exits, thus causing
+discrepancies between entry and exit counts for most kernel functions that
+used the synchronization mechanisms. The mechanisms are now properly detected
+for uni-processor kernels.
+
+- Attempts to analyze and parse page tables in the code section
+
+In Red Hat Enterprise Linux 3, a few symbols were added to the kernel in
+the code section for storing page tables. These new symbols were not 
+accounted for in the "skips.txt" file, and thus caused parsing failures.
+The new symbols have been added to "skips.txt".
+
+- Failure to allocate kernel memory while gathering kernel symbol information
+
+A bug was identified where a kernel memory allocation using '__get_free_pages'
+within the driver routines for gathering kernel symbol information could fail, 
+and return a NULL pointer. The use of 'vmalloc' was added as a backup if
+the allocation using '__get_free_pages' fails.
+
+- Unable to find context-switch points on Red Hat Enterprise Linux 3
+
+In Red Hat Enterprise Linux 3, the supposedly inline kernel function
+'context_switch' is not actually inlined into 'schedule', and thus caused
+failures when attempting to find the context-switch points via KAPI. We
+now check for this case and handle it properly.
+
+- Parsing failure when continuing to parse function after call to 'panic'
+
+The Linux kernel function 'panic' will never return, such that parsing
+any instructions following a call to this function may cause failures. We
+now identify a call to the 'panic' function as one that would return for the 
+caller, in order to force kerninstd to not parse instructions after the call.
+
+- Parsing failure for kernel built with recent gcc containing segment overrides
+
+A bug was identified in the parser for IA-32 that caused incorrect branch
+displacements to be used by the interprocedural control-flow analysis when
+parsing instructions that made use of segment override prefixes. Use of these
+prefixes is new with kernels built using the recent versions of gcc. The 
+parser has been fixed to produce valid displacements for these instructions.
+
+- Entries not equal to exits for 'schedule' function
+
+A bug was identified where a 'push; jmp' call sequence was being identified
+as an interprocedural exit, and thus causing the function exit count to not
+equal its entry count. The offending sequence is no longer treated as an exit.
+
+- Possible infinite loop in implemenation of kerninstapi atomic assignment
+
+A bug was identifed where the source pseudoregister used in a compare-and-swap
+operation was not reloaded with the new value when the comparison failed. If
+a compare had ever failed, this would have most likely led to an infinite loop.
+
+- Performance counting not enabled on all processors
+
+Due to a complete oversight by the developers, performance counters were only
+properly enabled on one processor of a SMP Pentium 4/Xeon machine. This would
+lead to all but one of the processors reporting zero values for all metrics
+relying on the performance counters.

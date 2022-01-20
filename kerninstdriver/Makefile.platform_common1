@@ -1,0 +1,31 @@
+#
+# common definitions for all makefiles
+#
+
+CC		= gcc
+CXX		= g++
+LD		= /usr/ccs/bin/ld
+AS              = /usr/ccs/bin/as
+
+TO_CORE         = ../..
+
+INCLUDES	+= -I../src -I$(TO_CORE) -I$(TO_CORE)/core
+VPATH		+= ../src
+
+MODULE		= kerninst
+
+SRCS		= ../src/kerninst.c \
+                  ../src/calleeCounter.c \
+                  ../src/ari.C \
+		  ../src/kernInstIoctls.C \
+		  ../src/loggedAllocRequests.C \
+		  ../src/loggedMem.C \
+		  ../src/physMem.C \
+		  ../src/springboardSpace.C \
+		  ../src/symbol_table.C \
+                  ../src/common_ops.s \
+                  ../src/calleeCounterAux.s \
+		  ../src/all_vtimers.c \
+		  ../src/context_switch.c \
+		  ../src/hash_table.c \
+		  ../src/stacklist.c

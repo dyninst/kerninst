@@ -1,0 +1,35 @@
+INSTANTIATE_TEMPLATES = true
+USES_LIB_KERNINST_UTIL = true
+
+TARGET	      = emtest
+
+SRCS	     += ../src/tempBufferEmitter.C \
+		../../insnVec/src/insnVec.C \
+		../../immediates/src/uimm.C \
+		../../immediates/src/simm.C \
+		../../bitutils/src/bitUtils.C \
+		../../archtraits/src/instr.C \
+		../../archtraits/src/reg.C \
+		../../archtraits/src/reg_set.C 
+	
+IFLAGS	     += -I../src -I../../insnVec/src  \
+		-I$(TO_PD_CORE)\
+		-I../../archtraits/src \
+		-I../../xdr/src \
+		-I../../out_streams/src \
+		-I../../immediates/src -I../../bitutils/src  \
+		-I../../ABIs/src
+
+VPATH	     += ../src ../../insnVec/src  \
+		../../immediates/src \
+		../../archtraits/src \
+		../../bitutils/src  ../../ABIs/src
+
+LIBS 	     += -lnsl
+SYSLIBS	     += 
+
+
+CFLAGS		+=
+CXXFLAGS	+=
+		   
+all:	$(TARGET) 

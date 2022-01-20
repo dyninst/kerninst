@@ -1,0 +1,31 @@
+NO_IMPLICIT_TEMPLATES = true
+
+TARGET	      = fntest
+
+SRCS	     += ../../immediates/src/uimm.C \
+	 	../../immediates/src/simm.C \
+		../../bitutils/src/bitUtils.C \
+		../../sparc_reg/src/sparc_reg.C \
+		../../sparc_reg_set/src/sparc_reg_set.C \
+	        ../../sparc_instr/src/sparc_instr.C \
+		../../bitwise_dataflow_fn/src/bitwise_dataflow_fn.C \
+		../../bitwise_dataflow_fn/src/mbdf_window.C \
+	        ../../sparc_bb/src/sparc_bb.C \
+		../../sparc_fn/src/readySet.C \
+		../../sparc_fn/src/sparc_fn.C \
+	        ../src/templates.C \
+	        ../src/main.C
+
+#	        ../../sparc_bb/src/orderedbb.C \
+
+IFLAGS += -I../../immediates/src -I../../bitutils/src/ -I../../sparc_reg/src \
+	  -I../../sparc_reg_set/src -I../../sparc_instr/src \
+	  -I../../bitwise_dataflow_fn/src -I../../sparc_bb/src -I../../sparc_fn/src
+VPATH  += ../src ../../immediates/src ../../bitutils/src ../../sparc_reg/src \
+	  ../../sparc_reg_set/src ../../sparc_instr/src \
+	  ../../bitwise_dataflow_fn/src ../../sparc_bb/src ../../sparc_fn/src
+
+LIBS 	     += -lpdutil
+SYSLIBS	     += 
+
+all:	$(TARGET) 

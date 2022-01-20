@@ -1,0 +1,74 @@
+INSTANTIATE_TEMPLATES = true
+USES_LIB_KERNINST_UTIL = true
+
+TARGET	      = sparcinstrtest
+
+SRCS	     += ../../immediates/src/uimm.C \
+	 	../../immediates/src/simm.C \
+		../../bitutils/src/bitUtils.C \
+		../../sparc_reg/src/sparc_reg.C \
+		../../sparc_reg_set/src/sparc_reg_set.C \
+		../../sparc_reg_set/src/sparc_fp_regset.C \
+		../../sparc_reg_set/src/sparc_int_regset.C \
+		../../sparc_reg_set/src/sparc_misc_regset.C \
+	        ../src/sparc_instr.C \
+		../src/test_add.C \
+		../src/test_bpr.C \
+		../src/test_fbfcc.C \
+		../src/test_fbpfcc.C \
+		../src/test_bicc.C \
+		../src/test_bpcc.C \
+		../src/test_call.C \
+		../src/test_cas.C \
+		../src/test_movcc.C \
+		../src/test_movr.C \
+		../src/test_v9return.C \
+		../src/test_save_restore.C \
+		../src/test_saved_restored.C \
+		../src/test_sethi.C \
+		../src/test_shift.C \
+		../src/test_store_float.C \
+		../src/test_store_int.C \
+		../src/test_subtract.C \
+		../src/test_prefetch.C \
+		../src/test_fmovr.C \
+		../src/test_fmovcc.C \
+		../src/test_mulx_sdivx_udivx.C \
+		../src/test_popc.C \
+		../src/test_fadd_fsub.C \
+		../src/test_fcmp.C \
+		../src/test_float2int.C \
+		../src/test_float2float.C \
+		../src/test_int2float.C \
+		../src/test_fmov_fneg_fabs.C \
+		../src/test_fmul.C \
+		../src/test_fdiv.C \
+		../src/test_fsqrt.C \
+		../src/test_flush.C \
+		../src/test_cmp.C \
+		../src/test_jmp.C \
+		../src/test_signx.C \
+		../src/test_not.C \
+		../src/test_tst.C \
+		../src/test_neg.C \
+		../src/test_mov.C \
+		../src/test_bset.C \
+		../src/test_ret_retl.C \
+		../src/do_test.C \
+	        ../src/templates.C \
+	        ../src/main.C
+
+#		../../bitutils/src/popc.s
+
+IFLAGS += -I../../immediates/src -I../../bitutils/src/ -I../../sparc_reg/src \
+	  -I../../sparc_reg_set/src -I../../insnVec/src
+
+VPATH  += ../src ../../immediates/src ../../bitutils/src ../../sparc_reg/src \
+	  ../../sparc_reg_set/src ../../insnVec/src
+
+LIBS 	     += 
+SYSLIBS	     += -lnsl
+
+CXXFLAGS	+= 
+		   
+all:	$(TARGET) 

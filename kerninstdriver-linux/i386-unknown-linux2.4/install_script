@@ -1,0 +1,43 @@
+#!/bin/bash
+
+MODULE=kerninst
+KERNEL_REV=`uname -r`
+KERNEL_DRIVERS_DIR=/lib/modules/${KERNEL_REV}/kernel/drivers/char
+DEVICE_NAME=/dev/${MODULE}
+
+# build driver if necessary
+
+if [ ! -f kerninst ]; then
+   export PLATFORM="i386-unknown-linux2.4"
+   make
+   if [ $? -ne 0 ]; then
+      echo "ERROR: unable to build the kerninst driver, please see output above for more info."
+      exit 1
+   fi
+fi
+
+# copy driver to standard location
+
+echo - Copying module to ${KERNEL_DRIVERS_DIR}
+/bin/cp ${MODULE} ${KERNEL_DRIVERS_DIR}
+echo
+
+# remove old driver, if any
+
+echo - Removing old module and device node, if present
+/sbin/rmmod ${MODULE}
+/bin/rm -f ${DEVICE_NAME} > /dev/null 2>&1
+echo
+
+# insert the new driver and create new device node
+
+echo - Adding new kerninst driver
+/sbin/insmod -S ${MODULE}
+if [ $? -eq 0 ]; then
+  MAJOR=`cat /proc/devices | grep ${MODULE} | awk '{print $1}'`
+  echo - Found major number of kerninst driver to be ${MAJOR}, setting up device node
+  /bin/mknod ${DEVICE_NAME} c ${MAJOR} 0
+  /bin/chmod 664 ${DEVICE_NAME}
+else
+  echo - ERROR: attempt to insert kerninst driver failed, see above messages
+fi

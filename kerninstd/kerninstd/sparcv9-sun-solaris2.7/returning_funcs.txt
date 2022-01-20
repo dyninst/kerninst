@@ -1,0 +1,8 @@
+// returning_funcs.txt
+// Kernel functions that return on behalf of callers.
+// Examples: .stret4 ("structure return 4 bytes")
+// The first entry of the 3-tuple is always blank in this file
+// (Just to keep the format the same as skips.txt; don't sweat the details)
+
+   {"", "unix", ".stret4"},
+   {"", "unix", ".stret8"},

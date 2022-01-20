@@ -1,0 +1,39 @@
+#!/bin/csh -f
+
+# install script
+
+set MODULE = kerninst
+set KERNEL_DRIVERS_DIR=/usr/kernel/drv
+set KERNEL_DRIVERS_V9=${KERNEL_DRIVERS_DIR}/sparcv9
+set LONGDEVICENAME=/devices/pseudo/kerninst@0:kerninst
+set PRETTYDEVICENAME=/dev/kerninst
+
+if (-d ${KERNEL_DRIVERS_V9}) then
+    set MODULE_DIR=${KERNEL_DRIVERS_V9}
+else
+    set MODULE_DIR=${KERNEL_DRIVERS_DIR}
+endif
+cp ${MODULE} ${MODULE_DIR}
+echo copied ${MODULE} to ${MODULE_DIR}
+
+if !(-e ${KERNEL_DRIVERS_DIR}/${MODULE}.conf) then
+    cp ${MODULE}.conf ${KERNEL_DRIVERS_DIR}
+    echo copied ${MODULE}.conf to ${KERNEL_DRIVERS_DIR}
+endif
+
+echo removing old kerninst driver, if any
+/usr/sbin/rem_drv ${MODULE}
+
+echo adding new kerninst driver
+/usr/sbin/add_drv ${MODULE}
+
+# Set up symbolic link
+if !(-e $PRETTYDEVICENAME) then
+	ln -s $LONGDEVICENAME $PRETTYDEVICENAME
+	echo set up link from $LONGDEVICENAME to $PRETTYDEVICENAME.
+endif
+
+chmod a+rw $LONGDEVICENAME
+chmod a+x ${MODULE_DIR}/${MODULE}
+
+echo driver can be found at $PRETTYDEVICENAME

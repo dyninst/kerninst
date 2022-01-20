@@ -1,0 +1,18 @@
+How To Install KernInst 2.1.1
+-----------------------------
+
+* Binary Distribution
+
+If you have unpacked the binary distribution, you're basically done
+installing already. The KernInst binaries do not require any special 
+placement in the filesystem, so they can be run directly from the 
+distribution directories. For details on running KernInst, refer to 
+the user's guide in the 'docs' directory.
+
+* Source Distribution
+
+After unpacking the source distribution, you will need to build the
+various KernInst components. Refer to 'BUILD_GUIDE' in the 'docs'
+directory for instructions. After you have completed building, you
+are ready to run KernInst. Details on how to run KernInst can be found
+in the user's guide in the 'docs' directory.

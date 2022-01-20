@@ -1,0 +1,22 @@
+// function_numlevels.txt
+// A kludge file that hard-wires how many "levels" a particular function's dataflow
+// function has.  Needed e.g. when doing interproc live reg analysis and we see
+// a grey DFS node (visited but not yet completed), so we'll be returning
+// conservative for this function. Fine and well, but how many levels should the
+// conservative result be?  Any pre-save frames?  (See sparc dataflow function
+// source code if you have no idea what I'm talking about.)
+
+// The first entry of the 3-tuple is the # of levels:
+// 0 is not allowed
+// positive: that many levels.  1 --> a "normal" function.  2 --> a function
+//    that has one more restore than save.  And so on.
+// negative: that many pre-save frames manufactured.  -1 --> a function
+//    that has one more save than restore.  And so on.
+
+// Note that the last line has to end in a comma, but if you add a comment
+// after that comma, you can avoid a spurious cout warning being printed
+// to the screen: "unknown start of command ",""
+
+//   {"2", "unix", "stubs_common_code"},
+
+// hello world (comment at end of file to avoid spurious cout warning)

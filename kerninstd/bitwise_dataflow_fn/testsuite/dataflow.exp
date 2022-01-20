@@ -1,0 +1,38 @@
+# This is my first take of an expect script --ari
+
+set target_info(dataflow_fn_test,name) "dataflow_fn_test"
+set mailing_list {tamches}
+
+proc dataflow_fn_test_exit {} {
+    # Called by runtest before it exits.  Should remove temp files, etc.
+}
+
+proc dataflow_fn_test_version {} {
+    # Prints version label and number for $tool.  Called by DejaGnu to print
+    # its final summary report.  Output should be full path name used for the
+    # tested tool and its version number.
+
+    puts "dataflow fn test v1.0"
+}
+
+proc do_dataflow_fn_test {testnm} {
+    expect {
+	"$testnm...done\r\n" {pass "dataflow_fn_test $testnm"}
+	"$testnm...nyidone\r\n" {fail "dataflow_fn_test $testnm NYI"}
+	timeout   {fail "(timeout) dataflow_fn_test $testnm"}
+    }
+}
+
+spawn ./bitwisetest
+
+set timeout 10
+
+do_dataflow_fn_test "pass"
+do_dataflow_fn_test "stop"
+do_dataflow_fn_test "start"
+do_dataflow_fn_test "compose"
+
+expect {
+    "success" {pass "dataflow_fn_test completed"}
+    timeout {fail "(timeout) dataflow_fn_test completion"}
+}

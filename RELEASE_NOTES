@@ -1,0 +1,35 @@
+RELEASE 2.1.1 NOTES
+-------------------
+
+* Binary Distributions
+
+The KernInst 2.1.1 binary distributions contain binaries that are
+statically-linked with LGPL'd libraries (libstdc++, libgcc). In
+compliance with the LGPL, we make available on our website 
+the source to these libraries and our own source code. We also
+statically link with the Tcl/Tk and X11 libraries, and provide
+the actual libaries we built with on our website for those who
+wish to obtain them. 
+
+Included with the binary distributions are prebuilt versions of
+various Paradyn components (libpdutil, visualizations). These
+components are licensed by us (see LICENSE.Paradyn).
+
+The Linux distributions also statically link with libelf
+in order to avoid problems between differing versions of the 
+library provided by the various Linux distributions. The prebuilt
+library and source code for this version of libelf is available
+on our website.
+
+Note that the release binaries are dynamically linked to libc
+version 2.3.2. This means that older systems having only libc
+version 2.2.x will not be able to run our binaries. Please upgrade
+your libc version if this is the case, or download the source
+distribution and build it with your version of libc.
+
+* Source Distribution
+
+The entire source code and build structure necessary to build all
+components of KernInst is included in the source distribution. The
+source distribution thus contains some portions of the Paradyn source
+code, which are licensed by us (see LICENSE.Paradyn).

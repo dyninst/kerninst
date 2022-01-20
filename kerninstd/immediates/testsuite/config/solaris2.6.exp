@@ -1,0 +1,47 @@
+# hello
+# This is the init file; it's required
+# It determines a program to execute (immtest in our case), since it could
+# be platform-dependent
+
+# We're supposed to define up to 4 procs with standard names that start with $tool
+# ($tool was already defined; probably "immtest")
+
+# runtest calls $tool_exit and $tool_version; the others are only called by
+# the test suites themselves.
+
+proc immtest_start {} {
+    # Start tool.  If interactive (e.g. has a prompt or uses the mouse), leave tool up
+    # and running.  If batch then this is optional; convention is to run the tool
+    # and leave output in vrble "comp_output"; test scripts will then analyze this
+    # vrble.
+
+    # Presently there are no arguments
+    spawn ./immtest
+    sleep 1
+
+#    puts stderr "spawn_id is $spawn_id"
+}
+
+proc immtest_load {} {
+    # Load something into a tool.  If an interactive tool, this preps the tool for
+    # a particular test case.  (e.g. for gdb, this loads in a new executable file
+    # being gdb'd).  For a batch tool, this might do nothing.  By convention, leaves
+    # the output of any program it runs in "exec_output".  Test scripts will call
+    # this routine.
+
+    puts stderr "welcome to immtest_load"
+}
+
+proc immtest_exit {} {
+    # Called by runtest before it exits.  Should remove temp files, etc.
+    puts stderr "welcome to immtest_exit"
+}
+
+proc immtest_version {} {
+    # Prints version label and number for $tool.  Called by DejaGnu to print
+    # its final summary report.  Output should be full path name used for the
+    # tested tool and its version number.
+
+    puts "immtest version 1.0"
+}
+

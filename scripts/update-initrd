@@ -1,0 +1,165 @@
+#!/bin/bash
+
+if [ $# -ne 1 ]; then
+   echo "Usage: $0 <initial ramdisk filename>"
+   exit 1
+fi
+
+if [ ! -f $1 ]; then
+   echo "Error: File $1 does not exist"
+   echo "Usage: $0 <initial ramdisk filename>"
+   exit 1
+fi
+
+initrd="$1"
+
+echo "Trying to update initial ramdisk named ${initrd}"
+
+zcat="cat"
+gzip=""
+
+# Try to guess the compression type of the file
+
+which gunzip > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+   echo "Error: 'gunzip' is not in the path"
+   exit 1
+fi
+
+gunzip -t ${initrd} > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+
+   which bunzip2 > /dev/null 2>&1
+   if [ $? -ne 0 ]; then
+      echo "Error: 'bunzip2' is not in the path"
+      exit 1
+   fi
+
+   bunzip2 -t ${initrd} > /dev/null 2>&1
+   if [ $? -eq 0 ]; then
+      echo "- ramdisk is compressed using bzip2"
+      zcat="bzcat"
+      gzip="bzip2"
+   fi
+
+else
+   echo "- ramdisk is compressed using gzip"
+   zcat="zcat"
+   gzip="gzip"
+fi
+
+if [ "$zcat" == "cat" ]; then
+   echo "- ramdisk is not compressed, odd"
+fi
+
+# Find an available /dev/ram device
+
+echo 
+echo "Attempting to find ram device not in use"
+
+dev_ram=""
+
+which mount > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+   echo "Error: 'mount' is not in the path"
+   exit 1
+fi
+
+for file in `/bin/ls /dev/ram*`; do
+   mount | fgrep $file > /dev/null 2>&1
+   if [ $? -eq 1 ]; then
+      dev_ram="$file"
+      echo "- using $dev_ram"
+      break
+   fi
+done
+
+if [ "$dev_ram" == "" ]; then
+   echo "Error: unable to find ram device not already in use"
+   exit 1
+fi
+
+echo
+
+# Open up the ramdisk
+
+tmp_dir=""
+for num in 0 1 2 3 4 5 6 7 8 9; do
+   if [ ! -d "/tmp/kerninst-initrd-mnt-$num" ]; then
+      tmp_dir="/tmp/kerninst-initrd-mnt-$num"
+      echo "Creating temporary directory $tmp_dir"
+      mkdir $tmp_dir
+      break;
+   fi
+done
+
+if [ "$tmp_dir" == "" ]; then
+   echo "Error: unable to create temporary directory"
+   exit 1
+fi
+
+which dd > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+   echo "Error: 'dd' is not in the path"
+   exit 1
+fi
+
+do_write="y"
+update_dir="${tmp_dir}"
+
+echo "Uncompressing ${initrd} into $dev_ram"
+$zcat ${initrd} | dd of=$dev_ram
+echo "Trying: mount $dev_ram $tmp_dir"
+mount $dev_ram $tmp_dir
+if [ $? -ne 0 ]; then
+   echo "Giving up - don't know how to mount ramdisk"
+   do_write="n"
+fi
+
+# Modify the /etc/modules.conf file in the ramdisk
+
+if [ "$do_write" == "y" ]; then
+   pushd ${update_dir} > /dev/null 2>&1
+ 
+   if [ ! -d ./etc ]; then
+      mkdir etc
+   fi
+   cd etc
+   if [ -f modules.conf ]; then
+      echo "Editing existing /etc/modules.conf"
+      echo "insmod_opt=-S" >> modules.conf
+   elif [ -f conf.modules ]; then
+      echo "Editing existing /etc/conf.modules"
+      echo "insmod_opt=-S" >> conf.modules
+   else
+      echo "Creating /etc/modules.conf" 
+      echo "insmod_opt=-S" > modules.conf
+   fi
+
+   popd > /dev/null 2>&1
+fi
+
+echo "Unmounting ${tmp_dir}"
+umount ${tmp_dir}
+
+new_file="${initrd}.new"
+if [ "$do_write" == "y" ]; then
+   echo "Creating new initial ramdisk with changes"
+   /bin/dd if=$dev_ram of=$new_file   
+
+   if [ "$gzip" != "" ]; then
+      $gzip ${initrd}.new
+      if [ "$gzip" == "gzip" ]; then
+         new_file="${initrd}.new.gz"
+      elif [ "$gzip" == "bzip2" ]; then
+         new_file="${initrd}.new.bz2"
+      fi
+   fi
+   echo "Updated initial ramdisk is named $new_file"
+
+   echo "Removing temporary directory $tmp_dir"
+   /bin/rm -rf $tmp_dir
+
+fi
+
+exit 0

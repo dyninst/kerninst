@@ -1,0 +1,21 @@
+NO_IMPLICIT_TEMPLATES = true
+# In ../../make....program, this symbol is checked for definition,
+# not for its value
+#USES_LIB_KERNINST_UTIL = true
+
+TARGET	      = regtest
+
+SRCS	     += ../src/x86_reg.C \
+	        ../src/main.C
+
+VPATH	     += ../src ../../immediates/src
+IFLAGS	     += -I../src -I../../immediates/src
+
+LIBS 	     += 
+SYSLIBS	     += 
+
+CFLAGS		+= 
+CXXFLAGS	+= 
+TFLAGS		+= 
+		   
+all:	$(TARGET) 

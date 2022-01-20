@@ -1,0 +1,31 @@
+CC		= /usr/bin/gcc
+CPP		= /usr/bin/g++
+LD		= /usr/bin/ld
+
+INCLUDES	+= -I../src -I../../.. -I../../src
+CFLAGS 		=   -Wall  $(INCLUDES)
+CXXFLAGS	= $(CFLAGS)
+TFLAGS		= -Wall  $(INCLUDES) 
+CFLAGS		+= -D__KERNEL__ -DMODULE
+
+VPATH		+= ../src
+
+MODULE		= kerninstmalloc
+
+SRCS		= ../src/kerninstmalloc.c 
+
+OBJECTS		= $(patsubst %.C, %.o, $(filter %.C,$(notdir $(SRCS)))) \
+		$(patsubst %.c, %.o, $(filter %.c,$(notdir $(SRCS)))) \
+		$(patsubst %.s, %.o, $(filter %.s,$(notdir $(SRCS)))) \
+		$(patsubst %.S, %.o, $(filter %.S,$(notdir $(SRCS))))
+
+default: 	$(MODULE)
+
+$(MODULE):	$(OBJECTS)
+		$(LD) ${LDFLAGS}  -r -o $@ $(OBJECTS)
+
+clean:
+	/bin/rm -f $(MODULE) *.o *~
+
+install:
+	./install_script

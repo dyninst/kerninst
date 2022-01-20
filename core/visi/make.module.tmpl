@@ -1,0 +1,29 @@
+#
+# Common makefile template for visi library.  This file is not
+# intended to be a useful Makefile in isolation; instead, it should be
+# included from within an architecture-specific Makefile.
+#
+# $Id: make.module.tmpl,v 1.12 2004/07/28 07:24:48 jaw Exp $
+#
+
+TARGET	      = libvisi.a 
+
+VPATH        += ../../visi/h
+
+SRCS	     += ../src/templates.C \
+		../src/datagrid.C \
+		../src/visualization.C 
+
+
+IGEN_GEN_SRCS =	visi.xdr.SRVR.C \
+		visi.xdr.CLNT.C \
+		visi.xdr.C \
+		visi.xdr.temp.C
+
+IGEN_ISRCS    = visi.I
+PREREQUISITES = $(IGEN_GEN_SRCS)
+
+all: $(TARGET)
+
+templates.o: $(PREREQUISITES) ../src/templates.C
+	$(CXX) $(TFLAGS) -c ../src/templates.C

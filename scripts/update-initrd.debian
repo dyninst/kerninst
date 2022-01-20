@@ -1,0 +1,98 @@
+#!/bin/bash
+
+if [ $# -ne 1 ]; then
+   echo "Usage: $0 <initial ramdisk filename>"
+   exit 1
+fi
+
+if [ ! -f $1 ]; then
+   echo "Error: File $1 does not exist"
+   echo "Usage: $0 <initial ramdisk filename>"
+   exit 1
+fi
+
+initrd="$1"
+
+echo "Trying to update initial ramdisk named ${initrd}"
+
+# Find an available /dev/ram device
+
+which mount > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+   echo "Error: 'mount' is not in the path"
+   exit 1
+fi
+
+echo
+
+# Open up the ramdisk
+
+tmp_dir=""
+for num in 0 1 2 3 4 5 6 7 8 9; do
+   if [ ! -d "/tmp/kerninst-initrd-mnt-$num" ]; then
+      tmp_dir="/tmp/kerninst-initrd-mnt-$num"
+      echo "Creating temporary directory $tmp_dir"
+      mkdir -p ${tmp_dir}/mount
+      break;
+   fi
+done
+
+if [ "$tmp_dir" == "" ]; then
+   echo "Error: unable to create temporary directory"
+   exit 1
+fi
+
+which dd > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+   echo "Error: 'dd' is not in the path"
+   exit 1
+fi
+
+do_write="y"
+update_dir="${tmp_dir}/mount"
+
+echo "Trying: mount -t cramfs -o loop $initrd $update_dir"
+mount -t cramfs -o loop $initrd $update_dir
+if [ $? -ne 0 ]; then
+   echo "Giving up - don't know how to mount ramdisk"
+   do_write="n"
+fi
+
+if [ "$do_write" == "y" ]; then
+
+   /bin/cp -a ${update_dir} ${tmp_dir}/copy
+
+   pushd ${tmp_dir}/copy > /dev/null 2>&1
+ 
+   if [ ! -d ./etc ]; then
+      mkdir etc
+   fi
+   cd etc
+   if [ -f modules.conf ]; then
+      echo "Editing existing /etc/modules.conf"
+      echo "insmod_opt=-S" >> modules.conf
+   elif [ -f conf.modules ]; then
+      echo "Editing existing /etc/conf.modules"
+      echo "insmod_opt=-S" >> conf.modules
+   else
+      echo "Creating /etc/modules.conf" 
+      echo "insmod_opt=-S" > modules.conf
+   fi
+
+   popd > /dev/null 2>&1
+
+   which mkcramfs > /dev/null 2>&1
+   if [ $? -ne 0 ]; then
+      echo "Error: 'mkcramfs' is not in the path"
+   else
+      new_file="${initrd}.new"
+      mkcramfs ${tmp_dir}/copy $new_file
+      echo "Updated initial ramdisk is named $new_file"
+   fi
+fi
+
+echo "Unmounting ${tmp_dir}"
+umount ${tmp_dir}
+
+echo "Removing temporary directory $tmp_dir"
+/bin/rm -rf $tmp_dir
